@@ -1,7 +1,12 @@
-import { ComponentExample } from "@/components/component-example";
+import { Routes, Route } from "react-router-dom"
+import { LandingPage } from "@/components/LandingPage"
 
 export function App() {
-return <ComponentExample />;
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+    </Routes>
+  )
 }
 
-export default App;
+export default App
