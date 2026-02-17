@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +22,7 @@ import {
   Car,
   Dumbbell,
 } from "lucide-react"
+import { AArrowUpIcon } from "@/components/ui/a-arrow-up"
 
 const hotels = [
   {
@@ -123,8 +125,12 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">Sign In</Button>
-            <Button size="sm">Get Started</Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Sign In</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/register">Get Started</Link>
+            </Button>
           </div>
         </div>
       </nav>
@@ -133,9 +139,9 @@ export function LandingPage() {
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
-          <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
-          <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/3 blur-3xl" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-primary/10" />
+          <div className="absolute top-1/4 right-1/4 w-150 h-150 rounded-full bg-primary/5 blur-3xl" />
+          <div className="absolute bottom-1/4 left-1/4 w-100 h-100 rounded-full bg-primary/3 blur-3xl" />
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center pt-20">
@@ -240,7 +246,7 @@ export function LandingPage() {
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
           <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
-            <div className="w-1.5 h-3 bg-muted-foreground/50 rounded-full animate-pulse" />
+            <AArrowUpIcon className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
       </section>
@@ -436,12 +442,16 @@ export function LandingPage() {
             Join thousands of travelers who have discovered their ideal hotels through our intelligent booking system.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" className="text-primary">
-              Start Searching
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Button size="lg" variant="secondary" className="text-primary" asChild>
+              <Link to="/register">
+                Start Searching
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
             </Button>
-            <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
-              Learn More
+            <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary" asChild>
+              <Link to="/register">
+                Get Started
+              </Link>
             </Button>
           </div>
         </div>
