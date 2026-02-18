@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -10,8 +10,45 @@ import {
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Building2, Mail, Lock, ArrowRight } from "lucide-react"
+import { useState } from "react"
+import { useAuth } from "@/context/AuthProvider"
 
 export function LoginPage() {
+    const navigate = useNavigate()
+    const { login } = useAuth()
+    
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError("")
+
+        if (!email || !password) {
+            setError("Please enter both email and password")
+            return
+        }
+
+        setLoading(true)
+
+        try {
+            const result = await login(email, password)
+            
+            if (result.success) {
+                navigate("/")
+            } else {
+                setError(result.error || "Login failed")
+            }
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : "An error occurred during login"
+            setError(errorMessage)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-background flex flex-col">
             {/* Navigation */}
@@ -43,7 +80,7 @@ export function LoginPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form>
+                            <form onSubmit={handleSubmit}>
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -54,7 +91,10 @@ export function LoginPage() {
                                                 type="email"
                                                 placeholder="john@example.com"
                                                 required
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                     </Field>
@@ -74,13 +114,21 @@ export function LoginPage() {
                                                 id="password"
                                                 type="password"
                                                 required
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                     </Field>
+                                    {error && (
+                                        <div className="text-sm text-red-500 mt-2">
+                                            {error}
+                                        </div>
+                                    )}
                                     <Field>
-                                        <Button type="submit" className="w-full">
-                                            Sign In
+                                        <Button type="submit" className="w-full" disabled={loading}>
+                                            {loading ? "Signing In..." : "Sign In"}
                                             <ArrowRight className="w-4 h-4 ml-2" />
                                         </Button>
                                         \

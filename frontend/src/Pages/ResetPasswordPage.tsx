@@ -11,14 +11,32 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Building2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { useState } from "react"
+import { showSuccess, showError } from "@/lib/notifications"
 
 export function ResetPasswordPage() {
+  const [email, setEmail] = useState("")
   const [emailSubmitted, setEmailSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simulate email submission
-    setEmailSubmitted(true)
+    setLoading(true)
+
+    try {
+      // Simulate API call - in production, this would call a real endpoint
+      // await api.post('/auth/forgot-password', { email })
+      
+      // For now, simulate a successful response
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      
+      setEmailSubmitted(true)
+      showSuccess("Password reset instructions sent to your email!")
+    } catch (error: unknown) {
+      const err = error as Error
+      showError(err.message || "Failed to send reset instructions. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (emailSubmitted) {
@@ -46,7 +64,7 @@ export function ResetPasswordPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">Check Your Email</CardTitle>
                 <CardDescription>
-                  We've sent password reset instructions to your email address.
+                  We've sent password reset instructions to <strong>{email}</strong>
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -117,13 +135,16 @@ export function ResetPasswordPage() {
                         type="email" 
                         placeholder="john@example.com" 
                         required 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
+                        disabled={loading}
                       />
                     </div>
                   </Field>
                   <Field>
-                    <Button type="submit" className="w-full">
-                      Send Reset Link
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? "Sending..." : "Send Reset Link"}
                     </Button>
                     <FieldDescription className="text-center">
                       Remember your password?{" "}

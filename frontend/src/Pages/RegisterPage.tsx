@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -10,8 +10,58 @@ import {
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Building2, Mail, Lock, User, ArrowRight } from "lucide-react"
+import { useState } from "react"
+import { useAuth } from "@/context/AuthProvider"
 
 export function RegisterPage() {
+    const navigate = useNavigate()
+    const { register } = useAuth()
+    
+    const [name, setName] = useState("")
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [confirmPassword, setConfirmPassword] = useState("")
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError("")
+
+        // Validate passwords match
+        if (password !== confirmPassword) {
+            setError("Passwords do not match")
+            return
+        }
+
+        // Validate password strength
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters")
+            return
+        }
+
+        setLoading(true)
+
+        try {
+            const result = await register(name, email, password)
+            
+            if (result.success) {
+                navigate("/login")
+            } else {
+                setError(result.error || "Registration failed")
+            }
+        } catch (err) {
+            if (err instanceof Error) {
+                const axiosError = err as { response?: { data?: { message?: string } } };
+                setError(axiosError.response?.data?.message || "An error occurred during registration")
+            } else {
+                setError("An error occurred during registration")
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-background flex flex-col">
             {/* Navigation */}
@@ -43,7 +93,7 @@ export function RegisterPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <form>
+                            <form onSubmit={handleSubmit}>
                                 <FieldGroup>
                                     <Field>
                                         <FieldLabel htmlFor="name">Full Name</FieldLabel>
@@ -54,7 +104,10 @@ export function RegisterPage() {
                                                 type="text"
                                                 placeholder="John Doe"
                                                 required
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                     </Field>
@@ -67,7 +120,10 @@ export function RegisterPage() {
                                                 type="email"
                                                 placeholder="john@example.com"
                                                 required
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                         <FieldDescription>
@@ -82,7 +138,10 @@ export function RegisterPage() {
                                                 id="password"
                                                 type="password"
                                                 required
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                         <FieldDescription>
@@ -97,13 +156,21 @@ export function RegisterPage() {
                                                 id="confirm-password"
                                                 type="password"
                                                 required
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
                                                 className="pl-10"
+                                                disabled={loading}
                                             />
                                         </div>
                                     </Field>
+                                    {error && (
+                                        <div className="text-sm text-red-500 mt-2">
+                                            {error}
+                                        </div>
+                                    )}
                                     <Field>
-                                        <Button type="submit" className="w-full">
-                                            Create Account
+                                        <Button type="submit" className="w-full" disabled={loading}>
+                                            {loading ? "Creating Account..." : "Create Account"}
                                             <ArrowRight className="w-4 h-4 ml-2" />
                                         </Button>
 
