@@ -29,7 +29,7 @@ const hotels = [
     id: 1,
     name: "The Grand Azure",
     location: "Maldives",
-    price: 450,
+    price: 8500,
     rating: 4.9,
     reviews: 284,
     image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop",
@@ -39,7 +39,7 @@ const hotels = [
     id: 2,
     name: "Urban Heights Tower",
     location: "New York City",
-    price: 320,
+    price: 15200,
     rating: 4.7,
     reviews: 512,
     image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&h=600&fit=crop",
@@ -49,7 +49,7 @@ const hotels = [
     id: 3,
     name: "Serenity Resort",
     location: "Bali, Indonesia",
-    price: 280,
+    price: 7800,
     rating: 4.8,
     reviews: 398,
     image: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop",
@@ -59,7 +59,7 @@ const hotels = [
     id: 4,
     name: "Alpine Lodge",
     location: "Swiss Alps",
-    price: 520,
+    price: 6200,
     rating: 4.9,
     reviews: 176,
     image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&h=600&fit=crop",
@@ -332,7 +332,7 @@ export function LandingPage() {
                   <Separator className="mb-4" />
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-2xl font-bold">${hotel.price}</span>
+                      <span className="text-2xl font-bold">₹{hotel.price}</span>
                       <span className="text-sm text-muted-foreground">/night</span>
                     </div>
                     <Button size="sm">Book Now</Button>
