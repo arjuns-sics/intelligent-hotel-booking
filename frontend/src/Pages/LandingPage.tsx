@@ -26,44 +26,44 @@ import { AArrowUpIcon } from "@/components/ui/a-arrow-up"
 
 const hotels = [
   {
-    id: 1,
-    name: "The Grand Azure",
-    location: "Maldives",
-    price: 8500,
-    rating: 4.9,
-    reviews: 284,
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop",
-    features: ["Beachfront", "Infinity Pool", "Spa"],
-  },
-  {
-    id: 2,
-    name: "Urban Heights Tower",
-    location: "New York City",
-    price: 15200,
-    rating: 4.7,
-    reviews: 512,
-    image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&h=600&fit=crop",
-    features: ["City View", "Gym", "Restaurant"],
-  },
-  {
-    id: 3,
-    name: "Serenity Resort",
-    location: "Bali, Indonesia",
-    price: 7800,
+    id: "1",
+    name: "The Grand Palace Hotel",
+    location: "Mumbai, Maharashtra",
+    price: 12500,
     rating: 4.8,
-    reviews: 398,
-    image: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop",
-    features: ["Villa", "Pool", "Yoga"],
+    reviews: 324,
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+    features: ["wifi", "restaurant", "spa", "pool"],
   },
   {
-    id: 4,
-    name: "Alpine Lodge",
-    location: "Swiss Alps",
-    price: 6200,
+    id: "2",
+    name: "Ocean View Resort",
+    location: "Goa, India",
+    price: 8900,
+    rating: 4.6,
+    reviews: 512,
+    image: "https://images.unsplash.com/photo-1570206986634-afd7cccb68d3?q=80&w=1170&auto=format&fit=crop",
+    features: ["wifi", "restaurant", "parking", "pool"],
+  },
+  {
+    id: "3",
+    name: "Mountain Retreat Spa",
+    location: "Manali, Himachal Pradesh",
+    price: 6500,
+    rating: 4.7,
+    reviews: 289,
+    image: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80",
+    features: ["wifi", "spa", "restaurant"],
+  },
+  {
+    id: "4",
+    name: "Royal Heritage Hotel",
+    location: "Jaipur, Rajasthan",
+    price: 15000,
     rating: 4.9,
-    reviews: 176,
-    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&h=600&fit=crop",
-    features: ["Mountain View", "Ski", "Fireplace"],
+    reviews: 445,
+    image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80",
+    features: ["wifi", "restaurant", "spa", "parking", "pool"],
   },
 ]
 
@@ -116,7 +116,7 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/40">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -151,12 +151,19 @@ export function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+          {/* background image */}
+        <img 
+          src="https://images.unsplash.com/photo-1759920952159-a2d3ce5c1d73?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+          alt="Hotel Lobby"
+          className="absolute inset-0 w-full h-full object-cover opacity-20 bg-fixed"
+        />
         {/* Background */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-primary/10" />
           <div className="absolute top-1/4 right-1/4 w-150 h-150 rounded-full bg-primary/5 blur-3xl" />
           <div className="absolute bottom-1/4 left-1/4 w-100 h-100 rounded-full bg-primary/3 blur-3xl" />
         </div>
+      
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center pt-20">
           <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium">
@@ -306,7 +313,7 @@ export function LandingPage() {
                 Popular Destinations
               </h2>
             </div>
-            <Button variant="outline" className="group">
+            <Button variant="outline" className="group" onClick={() => navigate('/dashboard')}>
               View All Hotels
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
@@ -314,7 +321,7 @@ export function LandingPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {hotels.map((hotel) => (
-              <Card key={hotel.id} className="border-none shadow-lg shadow-primary/5 overflow-hidden group cursor-pointer">
+              <Card key={hotel.id} className="border-none shadow-lg shadow-primary/5 overflow-hidden group cursor-pointer" onClick={() => navigate(`/hotel/${hotel.id}`)}>
                 <div className="relative h-48 overflow-hidden">
                   <img 
                     src={hotel.image} 
@@ -328,7 +335,7 @@ export function LandingPage() {
                     </Badge>
                   </div>
                 </div>
-                <CardContent className="p-4">
+                <CardContent className="p-4 flex flex-col">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="font-semibold text-lg leading-tight">{hotel.name}</h3>
                   </div>
@@ -336,7 +343,7 @@ export function LandingPage() {
                     <MapPin className="w-4 h-4" />
                     {hotel.location}
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-4">
+                  <div className="flex flex-wrap gap-1 mb-4 min-h-[2.5rem]">
                     {hotel.features.map((feature, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {feature}
@@ -344,12 +351,15 @@ export function LandingPage() {
                     ))}
                   </div>
                   <Separator className="mb-4" />
-                  <div className="flex items-center justify-between">
+                  <div className="mt-auto flex items-center justify-between">
                     <div>
                       <span className="text-2xl font-bold">₹{hotel.price}</span>
                       <span className="text-sm text-muted-foreground">/night</span>
                     </div>
-                    <Button size="sm">Book Now</Button>
+                    <Button size="sm" onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/hotel/${hotel.id}`)
+                    }}>Book Now</Button>
                   </div>
                 </CardContent>
               </Card>

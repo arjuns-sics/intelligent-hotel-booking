@@ -85,7 +85,7 @@ export function HotelOwnerRegisterPage() {
             </nav>
 
             {/* Registration Form */}
-            <div className="flex-1 flex items-center justify-center p-6 md:p-10 pt-24">
+            <div className="flex-1 flex items-center justify-center p-6 md:p-10 pt-32">
                 <div className="w-full max-w-lg">
                     <Card>
                         <CardHeader>
