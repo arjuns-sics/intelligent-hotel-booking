@@ -35,9 +35,9 @@ export function LoginPage() {
 
         try {
             const result = await login(email, password)
-            
+
             if (result.success) {
-                navigate("/")
+                navigate("/dashboard")
             } else {
                 setError(result.error || "Login failed")
             }
@@ -131,7 +131,7 @@ export function LoginPage() {
                                             {loading ? "Signing In..." : "Sign In"}
                                             <ArrowRight className="w-4 h-4 ml-2" />
                                         </Button>
-                                        \
+                                        
                                         <FieldDescription className="text-center">
                                             Don't have an account?{" "}
                                             <Link to="/register" className="text-primary hover:underline">
