@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -23,6 +23,8 @@ import {
   Dumbbell,
 } from "lucide-react"
 import { AArrowUpIcon } from "@/components/ui/a-arrow-up"
+import { useAtomValue } from "jotai"
+import { isAuthenticatedAtom, userAtom } from "@/lib/authAtom"
 
 const hotels = [
   {
@@ -101,6 +103,8 @@ const amenities = [
 
 export function LandingPage() {
   const navigate = useNavigate()
+  const isAuthenticated = useAtomValue(isAuthenticatedAtom)
+  const user = useAtomValue(userAtom)
   const [searchLocation, setSearchLocation] = useState("")
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
@@ -113,6 +117,14 @@ export function LandingPage() {
     if (checkOut) params.set('checkOut', checkOut)
     if (guests) params.set('guests', guests)
     navigate(`/dashboard?${params.toString()}`)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    window.dispatchEvent(new Event('storage'))
+    navigate('/')
+    window.location.reload()
   }
 
   return (
@@ -135,16 +147,34 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/owner/login">List Your Property</Link>
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/login">Sign In</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link to="/register">Get Started</Link>
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+                  Dashboard
+                </Button>
+                {user?.name && (
+                  <span className="text-sm text-muted-foreground hidden lg:inline">
+                    Hi, {user.name.split(' ')[0]}
+                  </span>
+                )}
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/owner/login">List Your Property</Link>
+                </Button>
+                <Separator orientation="vertical" className="h-6" />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/register">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>
