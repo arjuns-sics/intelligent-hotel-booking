@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -100,10 +100,20 @@ const amenities = [
 ]
 
 export function LandingPage() {
+  const navigate = useNavigate()
   const [searchLocation, setSearchLocation] = useState("")
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [guests, setGuests] = useState("2")
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchLocation) params.set('location', searchLocation)
+    if (checkIn) params.set('checkIn', checkIn)
+    if (checkOut) params.set('checkOut', checkOut)
+    if (guests) params.set('guests', guests)
+    navigate(`/dashboard?${params.toString()}`)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,6 +135,10 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/owner/login">List Your Property</Link>
+            </Button>
+            <Separator orientation="vertical" className="h-6" />
             <Button variant="ghost" size="sm" asChild>
               <Link to="/login">Sign In</Link>
             </Button>
@@ -216,7 +230,7 @@ export function LandingPage() {
                 </select>
               </div>
             </div>
-            <Button size="lg" className="w-full mt-4 h-12 text-base">
+            <Button size="lg" className="w-full mt-4 h-12 text-base" onClick={handleSearch}>
               <Search className="w-5 h-5 mr-2" />
               Search Hotels
             </Button>
@@ -454,6 +468,49 @@ export function LandingPage() {
               </Link>
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Partner CTA Section */}
+      <section className="py-24 bg-muted/30">
+        <div className="max-w-5xl mx-auto px-6">
+          <Card className="border-none shadow-xl overflow-hidden">
+            <div className="grid md:grid-cols-2">
+              <div className="p-8 md:p-12 flex flex-col justify-center">
+                <Badge variant="outline" className="mb-4 w-fit">For Hotel Owners</Badge>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                  Partner With Us
+                </h2>
+                <p className="text-muted-foreground mb-6 leading-relaxed">
+                  List your property and reach thousands of travelers. Manage bookings, update availability in real-time, and grow your business with our powerful dashboard.
+                </p>
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "Zero commission on bookings",
+                    "Real-time booking management",
+                    "Detailed analytics & insights",
+                    "24/7 partner support",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Button size="lg" asChild>
+                  <Link to="/owner/register">
+                    List Your Property
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Link>
+                </Button>
+              </div>
+              <div className="relative h-64 md:h-auto bg-primary/10">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Building2 className="w-32 h-32 text-primary/20" />
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       </section>
 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useMemo } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -142,15 +142,16 @@ const DUMMY_HOTELS: Hotel[] = [
 
 export function UserDashboard() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [filters, setFilters] = useState<SearchFilters>({
-    location: '',
-    checkIn: '',
-    checkOut: '',
-    guests: 2,
-    minPrice: 0,
-    maxPrice: 100000,
-    rating: 0,
-    amenities: []
+    location: searchParams.get('location') || '',
+    checkIn: searchParams.get('checkIn') || '',
+    checkOut: searchParams.get('checkOut') || '',
+    guests: parseInt(searchParams.get('guests') || '2'),
+    minPrice: parseInt(searchParams.get('minPrice') || '0'),
+    maxPrice: parseInt(searchParams.get('maxPrice') || '100000'),
+    rating: parseFloat(searchParams.get('rating') || '0'),
+    amenities: searchParams.get('amenities')?.split(',') || []
   })
 
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('rating')
@@ -173,8 +174,74 @@ export function UserDashboard() {
     placeholderData: DUMMY_HOTELS
   })
 
+  // Filter and sort hotels from API or dummy data
+  const filteredHotels = useMemo(() => {
+    const hotelData = (hotels || DUMMY_HOTELS)
+    
+    let result = hotelData.filter(hotel => {
+      // Location filter (case-insensitive)
+      if (filters.location && !hotel.location.toLowerCase().includes(filters.location.toLowerCase()) && 
+          !hotel.name.toLowerCase().includes(filters.location.toLowerCase())) {
+        return false
+      }
+      
+      // Price range filter
+      if (filters.minPrice && hotel.price < filters.minPrice) {
+        return false
+      }
+      if (filters.maxPrice && hotel.price > filters.maxPrice) {
+        return false
+      }
+      
+      // Rating filter
+      if (filters.rating && hotel.rating < filters.rating) {
+        return false
+      }
+      
+      // Amenities filter (hotel must have all selected amenities)
+      if (filters.amenities.length > 0) {
+        const hasAllAmenities = filters.amenities.every(amenity => hotel.features.includes(amenity))
+        if (!hasAllAmenities) {
+          return false
+        }
+      }
+      
+      // Guests filter
+      if (filters.guests && hotel.guests && hotel.guests < filters.guests) {
+        return false
+      }
+      
+      return true
+    })
+    
+    // Sorting
+    result = [...result].sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'price') {
+        comparison = a.price - b.price
+      } else if (sortBy === 'rating') {
+        comparison = a.rating - b.rating
+      } else if (sortBy === 'name') {
+        comparison = a.name.localeCompare(b.name)
+      }
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+    
+    return result
+  }, [hotels, filters, sortBy, sortOrder])
+
   const handleSearch = () => {
-    // Trigger refetch by changing filters
+    // Update URL search params
+    const params = new URLSearchParams()
+    if (filters.location) params.set('location', filters.location)
+    if (filters.checkIn) params.set('checkIn', filters.checkIn)
+    if (filters.checkOut) params.set('checkOut', filters.checkOut)
+    if (filters.guests) params.set('guests', filters.guests.toString())
+    if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
+    if (filters.maxPrice && filters.maxPrice < 100000) params.set('maxPrice', filters.maxPrice.toString())
+    if (filters.rating) params.set('rating', filters.rating.toString())
+    if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
+    setSearchParams(params)
   }
 
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
@@ -414,7 +481,7 @@ export function UserDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold">
-                  {(hotels || DUMMY_HOTELS).length} Hotels Found
+                  {filteredHotels.length} Hotels Found
                 </h2>
                 <p className="text-muted-foreground text-sm">
                   {filters.location && `in ${filters.location}`}
@@ -449,9 +516,9 @@ export function UserDashboard() {
             </div>
 
             {/* Hotel Grid */}
-            {(hotels || DUMMY_HOTELS).length > 0 ? (
+            {filteredHotels.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                {(hotels || DUMMY_HOTELS).map((hotel) => (
+                {filteredHotels.map((hotel) => (
                   <Card key={hotel.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
                     <div className="relative h-48 overflow-hidden rounded-t-lg">
                       <img
@@ -521,16 +588,20 @@ export function UserDashboard() {
                 <p className="text-muted-foreground mb-6">
                   Try adjusting your search criteria or filters
                 </p>
-                <Button onClick={() => setFilters({
-                  location: '',
-                  checkIn: '',
-                  checkOut: '',
-                  guests: 2,
-                  minPrice: 0,
-                  maxPrice: 100000,
-                  rating: 0,
-                  amenities: []
-                })}>
+                <Button onClick={() => {
+                  const emptyFilters = {
+                    location: '',
+                    checkIn: '',
+                    checkOut: '',
+                    guests: 2,
+                    minPrice: 0,
+                    maxPrice: 100000,
+                    rating: 0,
+                    amenities: []
+                  }
+                  setFilters(emptyFilters)
+                  setSearchParams(new URLSearchParams())
+                }}>
                   Clear Filters
                 </Button>
               </div>
