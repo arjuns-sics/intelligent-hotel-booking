@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Search, MapPin, /*Calendar,*/ Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
-import api from "@/lib/api"
+import {api} from "@/lib/api"
 
 interface Hotel {
   id: string

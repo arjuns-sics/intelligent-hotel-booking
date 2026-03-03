@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Building2, Mail, Lock, ArrowRight, Hotel } from "lucide-react"
 import { useState } from "react"
+import { ownerApi } from "@/lib/api"
+import { toast } from "sonner"
 
 export function HotelOwnerLoginPage() {
     const navigate = useNavigate()
@@ -31,28 +33,34 @@ export function HotelOwnerLoginPage() {
 
         setLoading(true)
 
-        // Mock authentication for hotel owners
-        setTimeout(() => {
-            // Store mock owner data
+        try {
+            const response = await ownerApi.login({ email, password })
+
+            // Store token and owner data
+            localStorage.setItem("hotelOwnerToken", response.data.token)
             localStorage.setItem("hotelOwner", JSON.stringify({
-                id: "owner-1",
-                email: email,
-                name: "Rajesh Kumar",
-                hotelName: "The Grand Palace Hotel",
-                hotelId: "1",
+                id: response.data.id,
+                email: response.data.email,
+                name: response.data.name,
+                phone: response.data.phone,
+                onboardingComplete: response.data.onboardingComplete,
                 isAuthenticated: true
             }))
-            
-            // Check if onboarding is complete
-            const onboardingComplete = localStorage.getItem("onboardingComplete")
-            if (onboardingComplete === "true") {
+
+            toast.success("Login successful!")
+
+            // Redirect based on onboarding status from backend
+            if (response.data.onboardingComplete) {
                 navigate("/owner/dashboard")
             } else {
                 navigate("/owner/onboarding")
             }
-            
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Login failed. Please try again.")
+            toast.error(err.response?.data?.message || "Login failed")
+        } finally {
             setLoading(false)
-        }, 1000)
+        }
     }
 
     return (

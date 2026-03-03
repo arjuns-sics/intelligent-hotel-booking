@@ -20,16 +20,32 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function HotelOwnerRoute({ children }: { children: React.ReactNode }) {
   const ownerData = localStorage.getItem("hotelOwner")
   const isAuthenticated = ownerData && JSON.parse(ownerData).isAuthenticated
-  
+  const onboardingComplete = ownerData && JSON.parse(ownerData).onboardingComplete
+
   if (!isAuthenticated) {
     return <Navigate to="/owner/login" replace />
   }
-  
-  const onboardingComplete = localStorage.getItem("onboardingComplete")
-  if (onboardingComplete !== "true") {
+
+  if (!onboardingComplete) {
     return <Navigate to="/owner/onboarding" replace />
   }
-  
+
+  return <>{children}</>
+}
+
+function OnboardingRoute({ children }: { children: React.ReactNode }) {
+  const ownerData = localStorage.getItem("hotelOwner")
+  const isAuthenticated = ownerData && JSON.parse(ownerData).isAuthenticated
+  const onboardingComplete = ownerData && JSON.parse(ownerData).onboardingComplete
+
+  if (!isAuthenticated) {
+    return <Navigate to="/owner/login" replace />
+  }
+
+  if (onboardingComplete) {
+    return <Navigate to="/owner/dashboard" replace />
+  }
+
   return <>{children}</>
 }
 
@@ -71,7 +87,9 @@ export function App() {
       <Route
         path="/owner/onboarding"
         element={
-          <HotelOwnerOnboarding />
+          <OnboardingRoute>
+            <HotelOwnerOnboarding />
+          </OnboardingRoute>
         }
       />
       <Route

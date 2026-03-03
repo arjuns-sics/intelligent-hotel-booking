@@ -23,11 +23,13 @@ import {
     CheckCircle,
     ArrowRight,
     ArrowLeft,
-    DollarSign,
+    IndianRupee,
     Users,
     Bed,
     Info,
 } from "lucide-react"
+import { api } from "@/lib/api"
+import { toast } from "sonner"
 
 const AMENITIES = [
     { id: "wifi", label: "Free WiFi", icon: Wifi },
@@ -154,23 +156,57 @@ export function HotelOwnerOnboarding() {
     const handleSubmit = async () => {
         setLoading(true)
 
-        // Simulate API call
-        setTimeout(() => {
-            // Save hotel data
-            const hotelData = {
-                id: `hotel-${Date.now()}`,
-                ownerId: "owner-1",
-                ...formData,
-                status: "pending",
-                createdAt: new Date().toISOString(),
+        try {
+            // Prepare hotel data for API
+            const hotelPayload = {
+                hotelName: formData.hotelName,
+                hotelDescription: formData.hotelDescription,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                pincode: formData.pincode,
+                phone: formData.phone,
+                email: formData.email,
+                website: formData.website,
+                amenities: formData.amenities,
+                rooms: formData.rooms,
+                checkInTime: formData.checkInTime,
+                checkOutTime: formData.checkOutTime,
+                cancellationPolicy: formData.cancellationPolicy,
+                petPolicy: formData.petPolicy,
             }
 
-            localStorage.setItem("hotelData", JSON.stringify(hotelData))
-            localStorage.setItem("onboardingComplete", "true")
+            // Mark onboarding as complete and save hotel data
+            const response = await api.patch("/owner/onboarding/complete", hotelPayload, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("hotelOwnerToken")}`,
+                },
+            })
 
-            setLoading(false)
+            // Update local storage with new onboarding status and hotel data
+            const ownerData = localStorage.getItem("hotelOwner")
+            const owner = ownerData ? JSON.parse(ownerData) : null
+            const updatedOwner = { 
+                ...owner, 
+                onboardingComplete: true,
+                hotelName: response.data.data.hotelName,
+                hotelDescription: response.data.data.hotelDescription,
+                address: response.data.data.address,
+                city: response.data.data.city,
+                amenities: response.data.data.amenities,
+                rooms: response.data.data.rooms,
+            }
+            localStorage.setItem("hotelOwner", JSON.stringify(updatedOwner))
+            localStorage.setItem("hotelData", JSON.stringify(response.data.data))
+
+            toast.success("Onboarding completed successfully!")
             navigate("/owner/dashboard")
-        }, 1500)
+        } catch (err: any) {
+            console.error("Onboarding error:", err)
+            toast.error(err.response?.data?.message || "Failed to complete onboarding")
+        } finally {
+            setLoading(false)
+        }
     }
 
     const getStepProgress = () => (currentStep / totalSteps) * 100
@@ -453,7 +489,7 @@ export function HotelOwnerOnboarding() {
                                     <div>
                                         <Label>Price per Night (₹) *</Label>
                                         <div className="relative mt-1">
-                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
                                                 type="number"
                                                 placeholder="5000"

@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Building2, Mail, Lock, User, Phone, ArrowRight, Hotel, CheckCircle } from "lucide-react"
 import { useState } from "react"
+import { ownerApi } from "@/lib/api"
+import { toast } from "sonner"
 
 export function HotelOwnerRegisterPage() {
     const navigate = useNavigate()
@@ -15,8 +17,6 @@ export function HotelOwnerRegisterPage() {
         phone: "",
         password: "",
         confirmPassword: "",
-        hotelName: "",
-        hotelType: "",
     })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -47,21 +47,33 @@ export function HotelOwnerRegisterPage() {
 
         setLoading(true)
 
-        // Simulate registration
-        setTimeout(() => {
-            // Store owner data
-            localStorage.setItem("hotelOwner", JSON.stringify({
-                id: "owner-" + Date.now(),
+        try {
+            const response = await ownerApi.register({
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                hotelName: formData.hotelName,
+                password: formData.password,
+            })
+
+            // Store token and owner data
+            localStorage.setItem("hotelOwnerToken", response.data.token)
+            localStorage.setItem("hotelOwner", JSON.stringify({
+                id: response.data.id,
+                name: response.data.name,
+                email: response.data.email,
+                phone: response.data.phone,
+                onboardingComplete: response.data.onboardingComplete,
                 isAuthenticated: true,
             }))
 
-            setLoading(false)
+            toast.success("Registration successful!")
             navigate("/owner/onboarding")
-        }, 1000)
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Registration failed. Please try again.")
+            toast.error(err.response?.data?.message || "Registration failed")
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -150,40 +162,6 @@ export function HotelOwnerRegisterPage() {
                                                 disabled={loading}
                                             />
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="hotelName">Hotel / Property Name</Label>
-                                        <div className="relative mt-1">
-                                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                            <Input
-                                                id="hotelName"
-                                                placeholder="The Grand Hotel"
-                                                value={formData.hotelName}
-                                                onChange={(e) => updateField("hotelName", e.target.value)}
-                                                className="pl-10"
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="hotelType">Property Type</Label>
-                                        <select
-                                            id="hotelType"
-                                            value={formData.hotelType}
-                                            onChange={(e) => updateField("hotelType", e.target.value)}
-                                            className="w-full mt-1 p-2 border border-input rounded-md bg-background"
-                                            disabled={loading}
-                                        >
-                                            <option value="">Select property type</option>
-                                            <option value="hotel">Hotel</option>
-                                            <option value="resort">Resort</option>
-                                            <option value="boutique">Boutique Hotel</option>
-                                            <option value="guesthouse">Guest House</option>
-                                            <option value="homestay">Homestay</option>
-                                            <option value="villa">Villa</option>
-                                        </select>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
