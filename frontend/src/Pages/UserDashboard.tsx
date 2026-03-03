@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, /*useEffect,*/ useMemo } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Search, MapPin, Calendar, Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
+import { Search, MapPin, /*Calendar,*/ Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
 import api from "@/lib/api"
 
 interface Hotel {
@@ -157,7 +158,7 @@ export function UserDashboard() {
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('rating')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const { data: hotels, isLoading, error } = useQuery({
+  const { data: hotels, isLoading, /*error*/ } = useQuery({
     queryKey: ['hotels', filters, sortBy, sortOrder],
     queryFn: async () => {
       const response = await api.get('/hotels', {
@@ -230,19 +231,19 @@ export function UserDashboard() {
     return result
   }, [hotels, filters, sortBy, sortOrder])
 
-  const handleSearch = () => {
-    // Update URL search params
-    const params = new URLSearchParams()
-    if (filters.location) params.set('location', filters.location)
-    if (filters.checkIn) params.set('checkIn', filters.checkIn)
-    if (filters.checkOut) params.set('checkOut', filters.checkOut)
-    if (filters.guests) params.set('guests', filters.guests.toString())
-    if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
-    if (filters.maxPrice && filters.maxPrice < 100000) params.set('maxPrice', filters.maxPrice.toString())
-    if (filters.rating) params.set('rating', filters.rating.toString())
-    if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
-    setSearchParams(params)
-  }
+  // const handleSearch = () => {
+  //   // Update URL search params
+  //   const params = new URLSearchParams()
+  //   if (filters.location) params.set('location', filters.location)
+  //   if (filters.checkIn) params.set('checkIn', filters.checkIn)
+  //   if (filters.checkOut) params.set('checkOut', filters.checkOut)
+  //   if (filters.guests) params.set('guests', filters.guests.toString())
+  //   if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
+  //   if (filters.maxPrice && filters.maxPrice < 100000) params.set('maxPrice', filters.maxPrice.toString())
+  //   if (filters.rating) params.set('rating', filters.rating.toString())
+  //   if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
+  //   setSearchParams(params)
+  // }
 
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }))
@@ -450,10 +451,10 @@ export function UserDashboard() {
                   </div>
                 </div>
 
-                <Button className="w-full" onClick={handleSearch}>
+                {/* <Button className="w-full" onClick={handleSearch}>
                   <Search className="w-4 h-4 mr-2" />
                   Apply Filters
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           </aside>
@@ -471,10 +472,10 @@ export function UserDashboard() {
                   onChange={(e) => handleFilterChange('location', e.target.value)}
                 />
               </div>
-              <Button onClick={handleSearch}>
+              {/* <Button onClick={handleSearch}>
                 <Search className="w-4 h-4 mr-2" />
                 Search
-              </Button>
+              </Button> */}
             </div>
 
             {/* Results Header */}

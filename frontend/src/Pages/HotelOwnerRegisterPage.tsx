@@ -65,7 +65,7 @@ export function HotelOwnerRegisterPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col md:mt-16">
             {/* Navigation */}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/40">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">

@@ -5,6 +5,7 @@ import { RegisterPage } from "@/Pages/RegisterPage"
 import { ResetPasswordPage } from "@/Pages/ResetPasswordPage"
 import { UserDashboard } from "@/Pages/UserDashboard"
 import { HotelDetails } from "@/Pages/HotelDetails"
+import { UserBookingsPage } from "@/Pages/UserBookingsPage"
 import { HotelOwnerLoginPage } from "@/Pages/HotelOwnerLoginPage"
 import { HotelOwnerRegisterPage } from "@/Pages/HotelOwnerRegisterPage"
 import { HotelOwnerOnboarding } from "@/Pages/HotelOwnerOnboarding"
@@ -55,7 +56,15 @@ export function App() {
           </ProtectedRoute>
         }
       />
-      
+      <Route
+        path="/bookings"
+        element={
+          <ProtectedRoute>
+            <UserBookingsPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Hotel Owner Routes */}
       <Route path="/owner/login" element={<HotelOwnerLoginPage />} />
       <Route path="/owner/register" element={<HotelOwnerRegisterPage />} />
