@@ -11,7 +11,6 @@ import {
     Calendar,
     Users,
     TrendingUp,
-    TrendingDown,
     Bell,
     Search,
     MoreVertical,
@@ -19,7 +18,6 @@ import {
     XCircle,
     Clock,
     Edit,
-    Trash2,
     Plus,
     LogOut,
     User,
@@ -29,7 +27,6 @@ import {
     Eye,
     Download,
     Filter,
-    ChevronDown,
 } from "lucide-react"
 
 interface Booking {
@@ -193,7 +190,7 @@ export function HotelOwnerDashboard() {
     }
 
     const getStatusBadge = (status: Booking["status"]) => {
-        const variants = {
+        const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
             confirmed: "default",
             pending: "secondary",
             cancelled: "destructive",
@@ -746,7 +743,7 @@ export function HotelOwnerDashboard() {
                                 <CardContent className="pt-6">
                                     <div className="space-y-2">
                                         {[5, 4, 3, 2, 1].map((rating) => {
-                                            const counts = { 5: 245, 4: 58, 3: 15, 2: 4, 1: 2 }
+                                            const counts: Record<number, number> = { 5: 245, 4: 58, 3: 15, 2: 4, 1: 2 }
                                             const percentage = (counts[rating] / stats.totalReviews) * 100
                                             return (
                                                 <div key={rating} className="flex items-center gap-2">

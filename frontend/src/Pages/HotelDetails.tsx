@@ -2,11 +2,9 @@ import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   MapPin,
   Star,
@@ -388,7 +386,7 @@ export function HotelDetails() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={() => navigate('/dashboard')} className="gap-2">
@@ -414,7 +412,7 @@ export function HotelDetails() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Image Gallery */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="relative h-[400px] rounded-xl overflow-hidden">
+          <div className="relative h-100 rounded-xl overflow-hidden">
             <img
               src={hotel.images[selectedImage]}
               alt={hotel.name}
@@ -426,7 +424,7 @@ export function HotelDetails() {
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`relative h-[190px] rounded-lg overflow-hidden transition-opacity ${
+                className={`relative h-47.5 rounded-lg overflow-hidden transition-opacity ${
                   selectedImage === index ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'
                 }`}
               >
@@ -537,7 +535,7 @@ export function HotelDetails() {
                 <ul className="space-y-2">
                   {hotel.policies.map((policy, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                       {policy}
                     </li>
                   ))}
