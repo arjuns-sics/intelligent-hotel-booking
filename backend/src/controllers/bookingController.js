@@ -295,22 +295,23 @@ const cancelBooking = async (req, res) => {
 
 /**
  * @desc    Get bookings for hotel owner (to view incoming bookings)
- * @route   GET /api/bookings/hotel/:hotelId
+ * @route   GET /api/owner/bookings
  * @access  Private (Hotel Owner)
  */
 const getHotelBookings = async (req, res) => {
   try {
     const { status } = req.query
-    const hotelId = req.params.hotelId
 
-    // Verify owner owns this hotel
+    // Get owner's hotel ID
     const owner = await HotelOwner.findById(req.ownerId)
-    if (!owner || owner._id.toString() !== hotelId) {
-      return res.status(403).json({
+    if (!owner || !owner.onboardingComplete) {
+      return res.status(404).json({
         success: false,
-        message: "Not authorized to access bookings for this hotel",
+        message: "Hotel not found or onboarding incomplete",
       })
     }
+
+    const hotelId = owner._id.toString()
 
     // Build query
     const query = { hotel: hotelId }
@@ -319,15 +320,39 @@ const getHotelBookings = async (req, res) => {
     }
 
     const bookings = await Booking.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ checkIn: -1 })
       .populate("user", "name email phone")
+
+    // Transform bookings
+    const transformedBookings = bookings.map((booking) => ({
+      id: booking._id,
+      bookingId: booking.bookingId,
+      hotelName: booking.hotelName,
+      hotelImage: booking.hotelImage,
+      location: booking.location,
+      roomType: booking.roomType,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      guests: booking.guests,
+      numberOfNights: booking.numberOfNights,
+      pricePerNight: booking.pricePerNight,
+      totalAmount: booking.totalAmount,
+      status: booking.status,
+      bookingDate: booking.createdAt,
+      guest: {
+        name: booking.user?.name,
+        email: booking.user?.email,
+        phone: booking.user?.phone,
+      },
+      specialRequests: booking.specialRequests,
+    }))
 
     res.status(200).json({
       success: true,
       message: "Hotel bookings retrieved successfully",
       data: {
-        bookings,
-        count: bookings.length,
+        bookings: transformedBookings,
+        count: transformedBookings.length,
       },
     })
   } catch (error) {
@@ -340,10 +365,144 @@ const getHotelBookings = async (req, res) => {
   }
 }
 
+/**
+ * @desc    Update booking status (confirm, check-in, check-out)
+ * @route   PATCH /api/owner/bookings/:id/status
+ * @access  Private (Hotel Owner)
+ */
+const updateBookingStatus = async (req, res) => {
+  try {
+    const { status } = req.body
+    const bookingId = req.params.id
+
+    // Validate status
+    const validStatuses = ["pending", "confirmed", "checked-in", "checked-out", "cancelled"]
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      })
+    }
+
+    // Get owner's hotel ID
+    const owner = await HotelOwner.findById(req.ownerId)
+    if (!owner || !owner.onboardingComplete) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found or onboarding incomplete",
+      })
+    }
+
+    // Find booking for this hotel
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      hotel: owner._id,
+    }).populate("user", "name email phone")
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      })
+    }
+
+    // Validate status transitions
+    const statusTransitions = {
+      pending: ["confirmed", "cancelled"],
+      confirmed: ["checked-in", "cancelled"],
+      "checked-in": ["checked-out"],
+      "checked-out": [],
+      cancelled: [],
+    }
+
+    if (!statusTransitions[booking.status].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot transition from ${booking.status} to ${status}`,
+      })
+    }
+
+    // Update status
+    booking.status = status
+    await booking.save()
+
+    res.status(200).json({
+      success: true,
+      message: "Booking status updated successfully",
+      data: {
+        id: booking._id,
+        bookingId: booking.bookingId,
+        status: booking.status,
+      },
+    })
+  } catch (error) {
+    console.error("Update booking status error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to update booking status",
+      error: error.message,
+    })
+  }
+}
+
+/**
+ * @desc    Get booking statistics for hotel owner
+ * @route   GET /api/owner/bookings/stats
+ * @access  Private (Hotel Owner)
+ */
+const getBookingStats = async (req, res) => {
+  try {
+    // Get owner's hotel ID
+    const owner = await HotelOwner.findById(req.ownerId)
+    if (!owner || !owner.onboardingComplete) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found or onboarding incomplete",
+      })
+    }
+
+    const hotelId = owner._id.toString()
+
+    // Get all bookings for this hotel
+    const bookings = await Booking.find({ hotel: hotelId })
+
+    // Calculate statistics
+    const stats = {
+      total: bookings.length,
+      pending: bookings.filter(b => b.status === "pending").length,
+      confirmed: bookings.filter(b => b.status === "confirmed").length,
+      checkedIn: bookings.filter(b => b.status === "checked-in").length,
+      checkedOut: bookings.filter(b => b.status === "checked-out").length,
+      cancelled: bookings.filter(b => b.status === "cancelled").length,
+      totalRevenue: bookings
+        .filter(b => b.status !== "cancelled")
+        .reduce((sum, b) => sum + b.totalAmount, 0),
+      upcomingRevenue: bookings
+        .filter(b => b.status === "confirmed" || b.status === "pending")
+        .reduce((sum, b) => sum + b.totalAmount, 0),
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Booking statistics retrieved successfully",
+      data: stats,
+    })
+  } catch (error) {
+    console.error("Get booking stats error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve booking statistics",
+      error: error.message,
+    })
+  }
+}
+
 module.exports = {
   createBooking,
   getUserBookings,
   getBookingById,
   cancelBooking,
   getHotelBookings,
+  updateBookingStatus,
+  getBookingStats,
 }

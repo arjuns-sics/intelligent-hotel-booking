@@ -268,6 +268,10 @@ export function HotelOwnerDashboard() {
                                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                             </Button>
                             <Separator orientation="vertical" className="h-8" />
+                            <Button variant="ghost" size="sm" onClick={() => navigate("/owner/bookings")}>
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Bookings
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
                                 <Home className="w-4 h-4 mr-2" />
                                 User View

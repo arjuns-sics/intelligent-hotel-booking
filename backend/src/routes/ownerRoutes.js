@@ -6,7 +6,11 @@ const {
   getOwnerProfile,
   completeOnboarding,
 } = require("../controllers/ownerAuthController")
-const { getHotelBookings } = require("../controllers/bookingController")
+const { 
+  getHotelBookings, 
+  updateBookingStatus, 
+  getBookingStats 
+} = require("../controllers/bookingController")
 const { protectOwner } = require("../middleware/auth")
 const roomRoutes = require("./rooms")
 
@@ -135,5 +139,58 @@ router.use("/rooms", roomRoutes)
  *         description: Unauthorized
  */
 router.get("/bookings", protectOwner, getHotelBookings)
+
+/**
+ * @swagger
+ * /owner/bookings/stats:
+ *   get:
+ *     summary: Get booking statistics for hotel owner
+ *     tags: [Hotel Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistics retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/bookings/stats", protectOwner, getBookingStats)
+
+/**
+ * @swagger
+ * /owner/bookings/{id}/status:
+ *   patch:
+ *     summary: Update booking status
+ *     tags: [Hotel Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, confirmed, checked-in, checked-out, cancelled]
+ *     responses:
+ *       200:
+ *         description: Status updated successfully
+ *       400:
+ *         description: Invalid status transition
+ *       404:
+ *         description: Booking not found
+ */
+router.patch("/bookings/:id/status", protectOwner, updateBookingStatus)
 
 module.exports = router

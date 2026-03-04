@@ -10,6 +10,7 @@ import { HotelOwnerLoginPage } from "@/Pages/HotelOwnerLoginPage"
 import { HotelOwnerRegisterPage } from "@/Pages/HotelOwnerRegisterPage"
 import { HotelOwnerOnboarding } from "@/Pages/HotelOwnerOnboarding"
 import { HotelOwnerDashboard } from "@/Pages/HotelOwnerDashboard"
+import { HotelOwnerBookingsPage } from "@/Pages/HotelOwnerBookingsPage"
 import { useAuth } from "@/context/AuthProvider"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,14 @@ export function App() {
         element={
           <HotelOwnerRoute>
             <HotelOwnerDashboard />
+          </HotelOwnerRoute>
+        }
+      />
+      <Route
+        path="/owner/bookings"
+        element={
+          <HotelOwnerRoute>
+            <HotelOwnerBookingsPage />
           </HotelOwnerRoute>
         }
       />

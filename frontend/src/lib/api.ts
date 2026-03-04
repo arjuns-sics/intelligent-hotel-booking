@@ -188,6 +188,23 @@ export const bookingApi = {
     const response = await api.delete(`/bookings/${bookingId}`)
     return response.data
   },
+
+  // Owner booking management
+  getOwnerBookings: async (status?: string) => {
+    const params = status && status !== "all" ? { status } : {}
+    const response = await api.get("/owner/bookings", { params })
+    return response.data
+  },
+
+  getBookingStats: async () => {
+    const response = await api.get("/owner/bookings/stats")
+    return response.data
+  },
+
+  updateBookingStatus: async (bookingId: string, status: string) => {
+    const response = await api.patch(`/owner/bookings/${bookingId}/status`, { status })
+    return response.data
+  },
 }
 
 export default api

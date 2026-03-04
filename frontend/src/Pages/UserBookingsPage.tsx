@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import {
     Calendar,
     MapPin,
     Star,
@@ -166,6 +173,8 @@ export function UserBookingsPage() {
         rating: 5,
         comment: "",
     })
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
     // Fetch bookings from API
     const { data: bookingsData, isLoading, refetch } = useQuery({
@@ -243,6 +252,11 @@ export function UserBookingsPage() {
 
     const handleCancelBooking = (bookingId: string) => {
         cancelBookingMutation.mutate(bookingId)
+    }
+
+    const handleViewDetails = (booking: Booking) => {
+        setSelectedBooking(booking)
+        setShowDetailsDialog(true)
     }
 
     const handleWriteReview = (booking: Booking) => {
@@ -517,7 +531,14 @@ export function UserBookingsPage() {
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                {(booking.status === "upcoming" || booking.status === "checked-in") && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleViewDetails(booking)}
+                                                                >
+                                                                    View Details
+                                                                </Button>
+                                                                {(booking.status === "confirmed" || booking.status === "pending" || booking.status === "checked-in") && (
                                                                     <>
                                                                         <Button
                                                                             variant="outline"
@@ -536,7 +557,7 @@ export function UserBookingsPage() {
                                                                         </Button>
                                                                     </>
                                                                 )}
-                                                                {booking.status === "completed" && !hasReviewed(booking.id) && (
+                                                                {booking.status === "checked-out" && !hasReviewed(booking.id) && (
                                                                     <Button
                                                                         variant="default"
                                                                         size="sm"
@@ -546,7 +567,7 @@ export function UserBookingsPage() {
                                                                         Write Review
                                                                     </Button>
                                                                 )}
-                                                                {booking.status === "completed" && hasReviewed(booking.id) && (
+                                                                {booking.status === "checked-out" && hasReviewed(booking.id) && (
                                                                     <Badge variant="secondary" className="gap-1">
                                                                         <CheckCircle className="w-3 h-3" />
                                                                         Reviewed
@@ -835,6 +856,116 @@ export function UserBookingsPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Booking Details Dialog */}
+            {showDetailsDialog && selectedBooking && (
+                <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <span>{selectedBooking.bookingId}</span>
+                                <Badge variant={
+                                    selectedBooking.status === "cancelled" ? "destructive" :
+                                    selectedBooking.status === "checked-out" ? "secondary" :
+                                    "default"
+                                }>
+                                    {selectedBooking.status.toUpperCase()}
+                                </Badge>
+                            </DialogTitle>
+                            <DialogDescription>
+                                Booking details and information
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-6">
+                            {/* Hotel Information */}
+                            <div className="flex gap-4">
+                                <img
+                                    src={selectedBooking.hotelImage}
+                                    alt={selectedBooking.hotelName}
+                                    className="w-24 h-24 rounded-lg object-cover"
+                                />
+                                <div>
+                                    <h3 className="font-semibold text-lg">{selectedBooking.hotelName}</h3>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                                        <MapPin className="w-4 h-4" />
+                                        {selectedBooking.location}
+                                    </div>
+                                    <p className="text-sm mt-2">{selectedBooking.roomType}</p>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Booking Details */}
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span className="text-muted-foreground">Check-in</span>
+                                    <p className="font-medium">{formatDate(selectedBooking.checkIn)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Check-out</span>
+                                    <p className="font-medium">{formatDate(selectedBooking.checkOut)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Guests</span>
+                                    <p className="font-medium">{selectedBooking.guests} people</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Number of Nights</span>
+                                    <p className="font-medium">{selectedBooking.numberOfNights}</p>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Pricing */}
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Price per Night</span>
+                                    <span>{formatCurrency(selectedBooking.pricePerNight)}</span>
+                                </div>
+                                <div className="flex justify-between font-semibold text-base">
+                                    <span>Total Amount</span>
+                                    <span className="text-primary">{formatCurrency(selectedBooking.totalAmount)}</span>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <Separator />
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => navigate(`/hotel/${selectedBooking.hotelId}`)}
+                                >
+                                    View Hotel
+                                </Button>
+                                {(selectedBooking.status === "confirmed" || selectedBooking.status === "pending") && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            handleCancelBooking(selectedBooking.id)
+                                            setShowDetailsDialog(false)
+                                        }}
+                                    >
+                                        Cancel Booking
+                                    </Button>
+                                )}
+                                {selectedBooking.status === "checked-out" && !hasReviewed(selectedBooking.id) && (
+                                    <Button
+                                        onClick={() => {
+                                            handleWriteReview(selectedBooking)
+                                            setShowDetailsDialog(false)
+                                        }}
+                                    >
+                                        Write Review
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             )}
         </div>
     )
