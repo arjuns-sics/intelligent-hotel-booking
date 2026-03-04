@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useState, useMemo } from "react"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -82,9 +82,21 @@ interface HotelApiResponse {
 export function HotelDetails() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const [selectedImage, setSelectedImage] = useState(0)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<string>('')
+  
+  // Get initial values from URL params
+  const initialGuests = parseInt(searchParams.get('guests') || '2')
+  const initialCheckIn = searchParams.get('checkIn') || ''
+  const initialCheckOut = searchParams.get('checkOut') || ''
+  
+  const [bookingData, setBookingData] = useState({
+    checkIn: initialCheckIn,
+    checkOut: initialCheckOut,
+    guests: initialGuests,
+  })
 
   const { data: hotelData, isLoading, error } = useQuery({
     queryKey: ['hotel', id],
@@ -97,6 +109,36 @@ export function HotelDetails() {
   })
 
   const hotel = hotelData
+
+  // Filter rooms based on guest count
+  const availableRooms = useMemo(() => {
+    if (!hotel?.rooms) return []
+    return hotel.rooms.filter(room => 
+      room.status === 'available' && room.maxGuests >= bookingData.guests
+    )
+  }, [hotel, bookingData.guests])
+
+  // Calculate number of nights
+  const numberOfNights = useMemo(() => {
+    if (!bookingData.checkIn || !bookingData.checkOut) return 0
+    const checkIn = new Date(bookingData.checkIn)
+    const checkOut = new Date(bookingData.checkOut)
+    const diffTime = checkOut.getTime() - checkIn.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return Math.max(0, diffDays)
+  }, [bookingData.checkIn, bookingData.checkOut])
+
+  // Get selected room details
+  const selectedRoomDetails = useMemo(() => {
+    if (!selectedRoom || !hotel?.rooms) return null
+    return hotel.rooms.find(r => r.id === selectedRoom)
+  }, [selectedRoom, hotel])
+
+  // Calculate total price
+  const totalPrice = useMemo(() => {
+    if (!selectedRoomDetails || numberOfNights <= 0) return 0
+    return selectedRoomDetails.price * numberOfNights
+  }, [selectedRoomDetails, numberOfNights])
 
   if (isLoading) {
     return (
@@ -136,7 +178,7 @@ export function HotelDetails() {
       alert('Please select a room first')
       return
     }
-    console.log('Booking:', { hotelId: hotel.id, roomId: selectedRoom })
+    console.log('Booking:', { hotelId: hotel.id, roomId: selectedRoom, ...bookingData, totalPrice })
     // Navigate to booking page or show booking modal
   }
 
@@ -149,6 +191,12 @@ export function HotelDetails() {
     return parts.join(', ') || hotel.location
   }
 
+  // Calculate minimum price for available rooms
+  const minPrice = useMemo(() => {
+    if (availableRooms.length === 0) return hotel.price
+    return Math.min(...availableRooms.map(r => r.price))
+  }, [availableRooms, hotel.price])
+
   // Generate placeholder images based on hotel name
   const hotelImages = [
     hotel.image,
@@ -157,8 +205,8 @@ export function HotelDetails() {
     `https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80`,
   ]
 
-  // Convert rooms to roomTypes format for display
-  const roomTypes = hotel.rooms.map(room => ({
+  // Convert available rooms to roomTypes format for display
+  const roomTypes = availableRooms.map(room => ({
     id: room.id,
     name: room.name,
     price: room.price,
@@ -244,6 +292,11 @@ export function HotelDetails() {
                     <MapPin className="w-4 h-4" />
                     {hotel.location}
                   </div>
+                  {availableRooms.length > 0 && availableRooms.length < hotel.rooms.length && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {availableRooms.length} room{availableRooms.length > 1 ? 's' : ''} available for {bookingData.guests} guest{bookingData.guests > 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg">
                   <Star className="w-5 h-5 fill-primary text-primary" />
@@ -251,6 +304,13 @@ export function HotelDetails() {
                     <span className="font-semibold">{hotel.rating}</span>
                     <span className="text-muted-foreground text-sm"> ({hotel.reviews} reviews)</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 mb-6">
+                <div className="text-2xl font-bold text-primary">
+                  {formatPrice(minPrice)}
+                  <span className="text-sm font-normal text-muted-foreground ml-2">starting price for {bookingData.guests} guests</span>
                 </div>
               </div>
 
@@ -283,12 +343,16 @@ export function HotelDetails() {
             <Card>
               <CardHeader>
                 <CardTitle>Available Rooms</CardTitle>
-                <CardDescription>Choose from our selection of rooms</CardDescription>
+                <CardDescription>
+                  {availableRooms.length > 0 
+                    ? `Rooms for ${bookingData.guests} guest${bookingData.guests > 1 ? 's' : ''}`
+                    : `No rooms available for ${bookingData.guests} guests`
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {roomTypes.length > 0 ? (
                   roomTypes
-                    .filter(room => room.status === 'available')
                     .map((room) => (
                       <div
                         key={room.id}
@@ -308,7 +372,7 @@ export function HotelDetails() {
                             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
                               <span className="flex items-center gap-1">
                                 <Users className="w-4 h-4" />
-                                {room.capacity} guests
+                                {room.capacity} guests max
                               </span>
                               <span>{room.size}</span>
                               <span>{room.bed}</span>
@@ -324,9 +388,15 @@ export function HotelDetails() {
                       </div>
                     ))
                 ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    No rooms currently available
-                  </p>
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground font-medium">
+                      No rooms available for {bookingData.guests} guests
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Try reducing the number of guests
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -394,50 +464,91 @@ export function HotelDetails() {
             <Card className="sticky top-24">
               <CardHeader>
                 <CardTitle>Book Your Stay</CardTitle>
-                <CardDescription>Best price guaranteed</CardDescription>
+                <CardDescription>
+                  {numberOfNights > 0 
+                    ? `${numberOfNights} night${numberOfNights > 1 ? 's' : ''}`
+                    : `Starting from ${formatPrice(minPrice)}`
+                  }
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Price per night</span>
-                  <span className="text-2xl font-bold text-primary">{formatPrice(hotel.price)}</span>
-                </div>
-
-                <Separator />
-
                 <div className="space-y-2">
                   <Label>Check-in</Label>
-                  <Input type="date" />
+                  <Input 
+                    type="date" 
+                    value={bookingData.checkIn}
+                    onChange={(e) => setBookingData({ ...bookingData, checkIn: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Check-out</Label>
-                  <Input type="date" />
+                  <Input 
+                    type="date" 
+                    value={bookingData.checkOut}
+                    onChange={(e) => setBookingData({ ...bookingData, checkOut: e.target.value })}
+                    min={bookingData.checkIn || new Date().toISOString().split('T')[0]}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Guests</Label>
-                  <Input type="number" min="1" max={hotel.guests} defaultValue={2} />
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    max={hotel.guests} 
+                    value={bookingData.guests}
+                    onChange={(e) => {
+                      const newGuests = parseInt(e.target.value)
+                      setBookingData({ ...bookingData, guests: newGuests })
+                      // Reset room selection if current room doesn't match new guest count
+                      if (selectedRoom) {
+                        const room = hotel.rooms?.find(r => r.id === selectedRoom)
+                        if (room && room.maxGuests < newGuests) {
+                          setSelectedRoom('')
+                        }
+                      }
+                    }}
+                  />
                 </div>
 
                 <Separator />
 
-                {selectedRoom && (
-                  <>
-                    <div className="text-sm">
-                      <p className="text-muted-foreground">Selected room</p>
-                      <p className="font-medium">
-                        {roomTypes.find(r => r.id === selectedRoom)?.name}
-                      </p>
-                      <p className="text-primary font-bold">
-                        {formatPrice(roomTypes.find(r => r.id === selectedRoom)?.price || 0)}
-                      </p>
+                {numberOfNights > 0 && selectedRoomDetails && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        {formatPrice(selectedRoomDetails.price)} x {numberOfNights} night{numberOfNights > 1 ? 's' : ''}
+                      </span>
+                      <span>{formatPrice(totalPrice)}</span>
                     </div>
                     <Separator />
-                  </>
+                    <div className="flex justify-between font-semibold text-base">
+                      <span>Total</span>
+                      <span className="text-primary">{formatPrice(totalPrice)}</span>
+                    </div>
+                  </div>
                 )}
 
-                <Button className="w-full" size="lg" onClick={handleBookNow}>
-                  {selectedRoom ? 'Proceed to Book' : 'Select a Room'}
+                {numberOfNights > 0 && !selectedRoomDetails && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Select a room to see total price
+                  </p>
+                )}
+
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  onClick={handleBookNow}
+                  disabled={!selectedRoom || numberOfNights === 0}
+                >
+                  {!selectedRoom 
+                    ? 'Select a Room' 
+                    : numberOfNights === 0 
+                      ? 'Select Dates' 
+                      : `Book for ${formatPrice(totalPrice)}`
+                  }
                 </Button>
 
                 <div className="text-xs text-muted-foreground text-center space-y-1">

@@ -28,9 +28,9 @@ const getAllHotels = async (req, res) => {
 
     // Transform owners to hotels format
     let hotels = owners.map((owner) => {
-      // Calculate average room price if no direct hotel price
-      const avgPrice = owner.rooms && owner.rooms.length > 0
-        ? Math.round(owner.rooms.reduce((sum, room) => sum + (room.price || 0), 0) / owner.rooms.length)
+      // Calculate minimum room price for filtering (shows starting price)
+      const minPrice = owner.rooms && owner.rooms.length > 0
+        ? Math.min(...owner.rooms.map(r => r.price || 0))
         : 0
 
       // Count available rooms
@@ -78,7 +78,7 @@ const getAllHotels = async (req, res) => {
         id: owner._id.toString(),
         name: owner.hotelName || 'Hotel',
         location: locationString,
-        price: avgPrice,
+        price: minPrice,
         rating: generatedRating,
         reviews: reviewCount,
         image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`, // Placeholder image
@@ -181,9 +181,9 @@ const getHotelById = async (req, res) => {
       })
     }
 
-    // Calculate average room price
-    const avgPrice = owner.rooms && owner.rooms.length > 0
-      ? Math.round(owner.rooms.reduce((sum, room) => sum + (room.price || 0), 0) / owner.rooms.length)
+    // Calculate minimum room price
+    const minPrice = owner.rooms && owner.rooms.length > 0
+      ? Math.min(...owner.rooms.map(r => r.price || 0))
       : 0
 
     // Count available rooms
@@ -227,7 +227,7 @@ const getHotelById = async (req, res) => {
       id: owner._id.toString(),
       name: owner.hotelName || 'Hotel',
       location: locationString,
-      price: avgPrice,
+      price: minPrice,
       rating: generatedRating,
       reviews: reviewCount,
       image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,

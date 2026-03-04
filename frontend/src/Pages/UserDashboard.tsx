@@ -1,14 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useMemo } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useState, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Search, MapPin, Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
+import { Search, MapPin, Star, Building2, Users } from "lucide-react"
 import { api } from "@/lib/api"
+import { FilterSidebar } from "@/components/FilterSidebar"
+import { Input } from "@/components/ui/input"
 
 interface Room {
   id: string
@@ -50,51 +50,37 @@ interface SearchFilters {
   amenities: string[]
 }
 
-const AMENITIES = [
-  { id: 'wifi', label: 'Free WiFi', icon: Wifi },
-  { id: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed },
-  { id: 'parking', label: 'Valet Parking', icon: Car },
-  { id: 'spa', label: 'Spa & Wellness', icon: Dumbbell },
-  { id: 'pool', label: 'Pool', icon: Building2 },
-]
-
-// Empty array - will use API data or show "no hotels" message
-const DUMMY_HOTELS: Hotel[] = []
+const DEFAULT_FILTERS: SearchFilters = {
+  location: '',
+  checkIn: '',
+  checkOut: '',
+  guests: 2,
+  minPrice: 0,
+  maxPrice: 100000,
+  rating: 0,
+  amenities: []
+}
 
 export function UserDashboard() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [filters, setFilters] = useState<SearchFilters>({
-    location: searchParams.get('location') || '',
-    checkIn: searchParams.get('checkIn') || '',
-    checkOut: searchParams.get('checkOut') || '',
-    guests: parseInt(searchParams.get('guests') || '2'),
-    minPrice: parseInt(searchParams.get('minPrice') || '0'),
-    maxPrice: parseInt(searchParams.get('maxPrice') || '100000'),
-    rating: parseFloat(searchParams.get('rating') || '0'),
-    amenities: searchParams.get('amenities')?.split(',') || []
-  })
-
+  const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS)
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('rating')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const { data: hotelsResponse, isLoading, error } = useQuery({
     queryKey: ['hotels', filters, sortBy, sortOrder],
     queryFn: async () => {
-      const response = await api.get('/hotels', {
-        params: {
-          location: filters.location,
-          checkIn: filters.checkIn,
-          checkOut: filters.checkOut,
-          guests: filters.guests,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          rating: filters.rating,
-          amenities: filters.amenities.length > 0 ? filters.amenities.join(',') : undefined,
-          sortBy,
-          sortOrder
-        }
-      })
+      const params = new URLSearchParams()
+      if (filters.location) params.set('location', filters.location)
+      if (filters.guests) params.set('guests', filters.guests.toString())
+      if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
+      if (filters.maxPrice) params.set('maxPrice', filters.maxPrice.toString())
+      if (filters.rating) params.set('rating', filters.rating.toString())
+      if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
+      params.set('sortBy', sortBy)
+      params.set('sortOrder', sortOrder)
+
+      const response = await api.get('/hotels', { params })
       return response.data.data as { hotels: Hotel[]; count: number }
     },
     retry: false,
@@ -102,88 +88,13 @@ export function UserDashboard() {
 
   const hotels = hotelsResponse?.hotels || []
 
-  // Filter and sort hotels from API
-  const filteredHotels = useMemo(() => {
-    const hotelData = hotels || []
-
-    let result = hotelData.filter(hotel => {
-      // Location filter (case-insensitive)
-      if (filters.location && !hotel.location.toLowerCase().includes(filters.location.toLowerCase()) &&
-          !hotel.name.toLowerCase().includes(filters.location.toLowerCase())) {
-        return false
-      }
-
-      // Price range filter
-      if (filters.minPrice && hotel.price < filters.minPrice) {
-        return false
-      }
-      if (filters.maxPrice && hotel.price > filters.maxPrice) {
-        return false
-      }
-
-      // Rating filter
-      if (filters.rating && hotel.rating < filters.rating) {
-        return false
-      }
-
-      // Amenities filter (hotel must have all selected amenities)
-      if (filters.amenities.length > 0) {
-        const hasAllAmenities = filters.amenities.every(amenity => hotel.features.includes(amenity))
-        if (!hasAllAmenities) {
-          return false
-        }
-      }
-
-      // Guests filter
-      if (filters.guests && hotel.guests && hotel.guests < filters.guests) {
-        return false
-      }
-
-      return true
-    })
-
-    // Sorting
-    result = [...result].sort((a, b) => {
-      let comparison = 0
-      if (sortBy === 'price') {
-        comparison = a.price - b.price
-      } else if (sortBy === 'rating') {
-        comparison = a.rating - b.rating
-      } else if (sortBy === 'name') {
-        comparison = a.name.localeCompare(b.name)
-      }
-      return sortOrder === 'asc' ? comparison : -comparison
-    })
-
-    return result
-  }, [hotels, filters, sortBy, sortOrder])
-
-  // const handleSearch = () => {
-  //   // Update URL search params
-  //   const params = new URLSearchParams()
-  //   if (filters.location) params.set('location', filters.location)
-  //   if (filters.checkIn) params.set('checkIn', filters.checkIn)
-  //   if (filters.checkOut) params.set('checkOut', filters.checkOut)
-  //   if (filters.guests) params.set('guests', filters.guests.toString())
-  //   if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
-  //   if (filters.maxPrice && filters.maxPrice < 100000) params.set('maxPrice', filters.maxPrice.toString())
-  //   if (filters.rating) params.set('rating', filters.rating.toString())
-  //   if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
-  //   setSearchParams(params)
-  // }
-
-  const handleFilterChange = (key: keyof SearchFilters, value: any) => {
+  const handleFilterChange = useCallback((key: keyof SearchFilters, value: unknown) => {
     setFilters(prev => ({ ...prev, [key]: value }))
-  }
+  }, [])
 
-  const handleAmenityToggle = (amenityId: string) => {
-    setFilters(prev => ({
-      ...prev,
-      amenities: prev.amenities.includes(amenityId)
-        ? prev.amenities.filter(id => id !== amenityId)
-        : [...prev.amenities, amenityId]
-    }))
-  }
+  const handlePriceChange = useCallback((minPrice: number, maxPrice: number) => {
+    setFilters(prev => ({ ...prev, minPrice, maxPrice }))
+  }, [])
 
   const handleSort = (field: 'price' | 'rating' | 'name') => {
     if (sortBy === field) {
@@ -200,33 +111,6 @@ export function UserDashboard() {
       currency: 'INR',
       maximumFractionDigits: 0
     }).format(price)
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-muted rounded w-1/3 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-12 bg-muted rounded"></div>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="border rounded-lg p-4">
-                  <div className="h-48 bg-muted rounded mb-4"></div>
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-muted rounded w-1/2 mb-4"></div>
-                  <div className="h-10 bg-muted rounded"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (error) {
@@ -276,133 +160,13 @@ export function UserDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
+          {/* Filters Sidebar - UI only, backend handles filtering */}
           <aside className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
-                  Filters
-                </CardTitle>
-                <CardDescription>Refine your search</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search Fields */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Location</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        placeholder="Where are you going?"
-                        value={filters.location}
-                        onChange={(e) => handleFilterChange('location', e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Check-in</label>
-                      <Input
-                        type="date"
-                        value={filters.checkIn}
-                        onChange={(e) => handleFilterChange('checkIn', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Check-out</label>
-                      <Input
-                        type="date"
-                        value={filters.checkOut}
-                        onChange={(e) => handleFilterChange('checkOut', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Guests</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={filters.guests}
-                      onChange={(e) => handleFilterChange('guests', parseInt(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Price Range */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Price Range</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.minPrice}
-                        onChange={(e) => handleFilterChange('minPrice', parseInt(e.target.value))}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.maxPrice}
-                        onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Rating */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Minimum Rating</label>
-                    <select
-                      value={filters.rating}
-                      onChange={(e) => handleFilterChange('rating', parseInt(e.target.value))}
-                      className="w-full p-2 border border-input rounded-md bg-background"
-                    >
-                      <option value={0}>Any Rating</option>
-                      <option value={4}>4+ Stars</option>
-                      <option value={4.5}>4.5+ Stars</option>
-                    </select>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Amenities */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Amenities</label>
-                    <div className="space-y-2">
-                      {AMENITIES.map((amenity) => (
-                        <label key={amenity.id} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.amenities.includes(amenity.id)}
-                            onChange={() => handleAmenityToggle(amenity.id)}
-                            className="rounded border-gray-300 text-primary focus:ring-primary"
-                          />
-                          <amenity.icon className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">{amenity.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* <Button className="w-full" onClick={handleSearch}>
-                  <Search className="w-4 h-4 mr-2" />
-                  Apply Filters
-                </Button> */}
-              </CardContent>
-            </Card>
+            <FilterSidebar
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onPriceChange={handlePriceChange}
+            />
           </aside>
 
           {/* Main Content */}
@@ -418,23 +182,19 @@ export function UserDashboard() {
                   onChange={(e) => handleFilterChange('location', e.target.value)}
                 />
               </div>
-              {/* <Button onClick={handleSearch}>
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button> */}
             </div>
 
             {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold">
-                  {filteredHotels.length} Hotels Found
+                  {hotels.length} Hotels Found
                 </h2>
                 <p className="text-muted-foreground text-sm">
                   {filters.location && `in ${filters.location}`}
                 </p>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Sort by:</span>
                 <div className="flex gap-1">
@@ -447,7 +207,7 @@ export function UserDashboard() {
                       key={option.key}
                       variant={sortBy === option.key ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handleSort(option.key as any)}
+                      onClick={() => handleSort(option.key as 'price' | 'rating' | 'name')}
                       className="text-xs"
                     >
                       {option.label}
@@ -463,9 +223,9 @@ export function UserDashboard() {
             </div>
 
             {/* Hotel Grid */}
-            {filteredHotels.length > 0 ? (
+            {hotels.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                {filteredHotels.map((hotel) => (
+                {hotels.map((hotel) => (
                   <Card key={hotel.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
                     <div className="relative h-48 overflow-hidden rounded-t-lg">
                       <img
@@ -513,36 +273,21 @@ export function UserDashboard() {
                         <span>{hotel.availableRooms} rooms available</span>
                       </div>
 
-                      {/* Show rooms if available */}
-                      {hotel.rooms && hotel.rooms.length > 0 && (
-                        <>
-                          <Separator className="mb-4" />
-                          <div className="space-y-2 mb-4">
-                            <h4 className="text-sm font-semibold">Available Rooms</h4>
-                            {hotel.rooms
-                              .filter(room => room.status === 'available')
-                              .slice(0, 3)
-                              .map((room) => (
-                                <div key={room.id} className="flex justify-between items-center text-sm">
-                                  <span className="text-muted-foreground">{room.name}</span>
-                                  <span className="font-medium">{formatPrice(room.price)}</span>
-                                </div>
-                              ))}
-                            {hotel.rooms.filter(r => r.status === 'available').length > 3 && (
-                              <p className="text-xs text-muted-foreground">
-                                +{hotel.rooms.filter(r => r.status === 'available').length - 3} more rooms
-                              </p>
-                            )}
-                          </div>
-                        </>
-                      )}
-
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Users className="w-4 h-4" />
-                          {hotel.guests || '2'} guests max
+                          Up to {hotel.guests} guests
                         </div>
-                        <Button size="sm" onClick={() => navigate(`/hotel/${hotel.id}`)}>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/hotel/${hotel.id}`, {
+                            state: {
+                              guests: filters.guests,
+                              checkIn: filters.checkIn,
+                              checkOut: filters.checkOut
+                            }
+                          })}
+                        >
                           View Details
                         </Button>
                       </div>
@@ -557,20 +302,7 @@ export function UserDashboard() {
                 <p className="text-muted-foreground mb-6">
                   Try adjusting your search criteria or filters
                 </p>
-                <Button onClick={() => {
-                  const emptyFilters = {
-                    location: '',
-                    checkIn: '',
-                    checkOut: '',
-                    guests: 2,
-                    minPrice: 0,
-                    maxPrice: 100000,
-                    rating: 0,
-                    amenities: []
-                  }
-                  setFilters(emptyFilters)
-                  setSearchParams(new URLSearchParams())
-                }}>
+                <Button onClick={() => setFilters(DEFAULT_FILTERS)}>
                   Clear Filters
                 </Button>
               </div>
