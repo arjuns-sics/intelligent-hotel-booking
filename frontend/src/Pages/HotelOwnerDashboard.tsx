@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,25 +29,35 @@ import {
     Download,
     Filter,
     Trash2,
+    Loader2,
 } from "lucide-react"
-import { type Room } from "@/lib/api"
+import { type Room, bookingApi } from "@/lib/api"
 import { useRooms } from "@/hooks/useRooms"
 import { AddRoomDialog } from "@/components/AddRoomDialog"
 import { EditRoomDialog } from "@/components/EditRoomDialog"
 import { ViewRoomDialog } from "@/components/ViewRoomDialog"
 import { DeleteRoomDialog } from "@/components/DeleteRoomDialog"
+import { toast } from "sonner"
 
 interface Booking {
     id: string
+    bookingId: string
     guestName: string
     guestEmail: string
+    guestPhone?: string
     roomType: string
+    roomId: string
     checkIn: string
     checkOut: string
     guests: number
+    numberOfNights: number
+    pricePerNight: number
     totalAmount: number
-    status: "confirmed" | "pending" | "cancelled" | "checked-in" | "checked-out"
-    date: string
+    status: "pending" | "confirmed" | "checked-in" | "checked-out" | "cancelled"
+    bookingDate: string
+    hotelName: string
+    hotelImage: string
+    specialRequests?: string
 }
 
 interface Review {
@@ -159,7 +170,7 @@ const REVENUE_DATA = [
 
 export function HotelOwnerDashboard() {
     const navigate = useNavigate()
-    const [bookings, setBookings] = useState<Booking[]>(DUMMY_BOOKINGS)
+    const queryClient = useQueryClient()
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [activeTab, setActiveTab] = useState("overview")
@@ -179,16 +190,46 @@ export function HotelOwnerDashboard() {
     // Fetch rooms from backend using TanStack Query
     const { data: rooms = [], isLoading: roomsLoading } = useRooms()
 
-    const stats = {
-        totalRevenue: 2840000,
-        revenueGrowth: 12.5,
-        totalBookings: 156,
-        bookingsGrowth: 8.3,
-        occupancyRate: 78,
-        occupancyGrowth: 5.2,
-        averageRating: 4.8,
-        totalReviews: 324,
-    }
+    // Fetch bookings from backend
+    const { data: bookingsData, isLoading: bookingsLoading, refetch } = useQuery({
+        queryKey: ['owner-bookings-dashboard', statusFilter],
+        queryFn: async () => {
+            const response = await bookingApi.getOwnerBookings(statusFilter === "all" ? undefined : statusFilter)
+            return response.data
+        },
+        retry: false,
+    })
+
+    // Fetch booking stats
+    const { data: statsData } = useQuery({
+        queryKey: ['owner-booking-stats-dashboard'],
+        queryFn: async () => {
+            const response = await bookingApi.getBookingStats()
+            return response.data
+        },
+        retry: false,
+    })
+
+    const bookings = bookingsData?.bookings || []
+    const stats = statsData?.data || {}
+
+    // Update booking status mutation
+    const updateStatusMutation = useMutation({
+        mutationFn: async ({ bookingId, status }: { bookingId: string; status: string }) => {
+            const response = await bookingApi.updateBookingStatus(bookingId, status)
+            return response.data
+        },
+        onSuccess: () => {
+            toast.success('Booking status updated successfully')
+            refetch()
+            queryClient.invalidateQueries({ queryKey: ['owner-booking-stats-dashboard'] })
+        },
+        onError: (error: any) => {
+            toast.error('Failed to update booking status', {
+                description: error.response?.data?.message || 'Please try again.',
+            })
+        },
+    })
 
     const getStatusBadge = (status: Booking["status"]) => {
         const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -214,25 +255,26 @@ export function HotelOwnerDashboard() {
         )
     }
 
-    const handleBookingAction = (bookingId: string, action: "approve" | "reject") => {
-        setBookings((prev) =>
-            prev.map((b) =>
-                b.id === bookingId
-                    ? { ...b, status: action === "approve" ? "confirmed" : "cancelled" }
-                    : b
-            )
-        )
+    const handleBookingAction = (bookingId: string, action: "approve" | "reject" | "check-in" | "check-out") => {
+        let newStatus: string = ""
+        if (action === "approve") newStatus = "confirmed"
+        else if (action === "reject") newStatus = "cancelled"
+        else if (action === "check-in") newStatus = "checked-in"
+        else if (action === "check-out") newStatus = "checked-out"
+        
+        updateStatusMutation.mutate({ bookingId, status: newStatus })
     }
 
     const handleLogout = () => {
         localStorage.removeItem("hotelOwner")
+        localStorage.removeItem("hotelOwnerToken")
         navigate("/owner/login")
     }
 
     const filteredBookings = bookings.filter((booking) => {
         const matchesSearch =
-            booking.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            booking.id.toLowerCase().includes(searchQuery.toLowerCase())
+            booking.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            booking.guestName.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesStatus = statusFilter === "all" || booking.status === statusFilter
         return matchesSearch && matchesStatus
     })
@@ -243,6 +285,18 @@ export function HotelOwnerDashboard() {
             currency: "INR",
             maximumFractionDigits: 0,
         }).format(amount)
+    }
+
+    // Calculate dynamic stats from API data
+    const dashboardStats = {
+        totalRevenue: stats.totalRevenue || 0,
+        revenueGrowth: 12.5, // Can be calculated from historical data
+        totalBookings: stats.total || 0,
+        bookingsGrowth: 8.3,
+        occupancyRate: stats.total ? Math.round(((stats.confirmed + stats.checkedIn) / stats.total) * 100) : 0,
+        occupancyGrowth: 5.2,
+        averageRating: 4.8,
+        totalReviews: 324,
     }
 
     return (
@@ -293,10 +347,10 @@ export function HotelOwnerDashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-                                    <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                                    <p className="text-2xl font-bold">{formatCurrency(dashboardStats.totalRevenue)}</p>
                                     <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
                                         <TrendingUp className="w-4 h-4" />
-                                        <span>+{stats.revenueGrowth}% from last month</span>
+                                        <span>+{dashboardStats.revenueGrowth}% from last month</span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
@@ -311,10 +365,10 @@ export function HotelOwnerDashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Total Bookings</p>
-                                    <p className="text-2xl font-bold">{stats.totalBookings}</p>
+                                    <p className="text-2xl font-bold">{dashboardStats.totalBookings}</p>
                                     <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
                                         <TrendingUp className="w-4 h-4" />
-                                        <span>+{stats.bookingsGrowth}% from last month</span>
+                                        <span>+{dashboardStats.bookingsGrowth}% from last month</span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -329,10 +383,10 @@ export function HotelOwnerDashboard() {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Occupancy Rate</p>
-                                    <p className="text-2xl font-bold">{stats.occupancyRate}%</p>
+                                    <p className="text-2xl font-bold">{dashboardStats.occupancyRate}%</p>
                                     <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
                                         <TrendingUp className="w-4 h-4" />
-                                        <span>+{stats.occupancyGrowth}% from last month</span>
+                                        <span>+{dashboardStats.occupancyGrowth}% from last month</span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -491,6 +545,83 @@ export function HotelOwnerDashboard() {
 
                     {/* Bookings Tab */}
                     <TabsContent value="bookings" className="space-y-4">
+                        {/* Booking Stats Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Total</p>
+                                            <p className="text-2xl font-bold">{stats.total || 0}</p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                            <Calendar className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Confirmed</p>
+                                            <p className="text-2xl font-bold text-green-600">
+                                                {stats.confirmed || 0}
+                                            </p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Pending</p>
+                                            <p className="text-2xl font-bold text-orange-600">
+                                                {stats.pending || 0}
+                                            </p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                                            <Clock className="w-5 h-5 text-orange-600" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Checked In</p>
+                                            <p className="text-2xl font-bold text-purple-600">
+                                                {stats.checkedIn || 0}
+                                            </p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                            <User className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Checked Out</p>
+                                            <p className="text-2xl font-bold text-gray-600">
+                                                {stats.checkedOut || 0}
+                                            </p>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                            <LogOut className="w-5 h-5 text-gray-600" />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
                         <Card>
                             <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -529,51 +660,57 @@ export function HotelOwnerDashboard() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="rounded-md border">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-muted/50">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Booking ID</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Guest</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Room</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Dates</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Guests</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Amount</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredBookings.map((booking) => (
-                                                    <tr
-                                                        key={booking.id}
-                                                        className="border-t hover:bg-muted/30"
-                                                    >
-                                                        <td className="px-4 py-3 text-sm font-medium">{booking.id}</td>
-                                                        <td className="px-4 py-3">
-                                                            <div>
-                                                                <div className="text-sm font-medium">{booking.guestName}</div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    {booking.guestEmail}
+                                {bookingsLoading ? (
+                                    <div className="text-center py-12">
+                                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                                        <p className="text-muted-foreground">Loading bookings...</p>
+                                    </div>
+                                ) : filteredBookings.length > 0 ? (
+                                    <div className="rounded-md border">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead className="bg-muted/50">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Booking ID</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Guest</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Room</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Dates</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Guests</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Amount</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                                                        <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {filteredBookings.map((booking) => (
+                                                        <tr
+                                                            key={booking.id}
+                                                            className="border-t hover:bg-muted/30"
+                                                        >
+                                                            <td className="px-4 py-3 text-sm font-medium">{booking.bookingId}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div>
+                                                                    <div className="text-sm font-medium">{booking.guestName}</div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {booking.guestEmail}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm">{booking.roomType}</td>
-                                                        <td className="px-4 py-3">
-                                                            <div className="text-sm">
-                                                                <div>{new Date(booking.checkIn).toLocaleDateString()}</div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    to {new Date(booking.checkOut).toLocaleDateString()}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm">{booking.roomType}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="text-sm">
+                                                                    <div>{new Date(booking.checkIn).toLocaleDateString()}</div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        to {new Date(booking.checkOut).toLocaleDateString()}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-sm">{booking.guests}</td>
-                                                        <td className="px-4 py-3 text-sm font-medium">
-                                                            {formatCurrency(booking.totalAmount)}
-                                                        </td>
-                                                        <td className="px-4 py-3">{getStatusBadge(booking.status)}</td>
-                                                        <td className="px-4 py-3">
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm">{booking.guests}</td>
+                                                            <td className="px-4 py-3 text-sm font-medium">
+                                                                {formatCurrency(booking.totalAmount)}
+                                                            </td>
+                                                            <td className="px-4 py-3">{getStatusBadge(booking.status)}</td>
+                                                            <td className="px-4 py-3">
                                                             <div className="flex items-center gap-2">
                                                                 {booking.status === "pending" && (
                                                                     <>
@@ -583,6 +720,7 @@ export function HotelOwnerDashboard() {
                                                                             onClick={() =>
                                                                                 handleBookingAction(booking.id, "approve")
                                                                             }
+                                                                            title="Approve Booking"
                                                                         >
                                                                             <CheckCircle className="w-4 h-4" />
                                                                         </Button>
@@ -592,14 +730,43 @@ export function HotelOwnerDashboard() {
                                                                             onClick={() =>
                                                                                 handleBookingAction(booking.id, "reject")
                                                                             }
+                                                                            title="Reject Booking"
                                                                         >
                                                                             <XCircle className="w-4 h-4" />
                                                                         </Button>
                                                                     </>
                                                                 )}
-                                                                <Button size="icon" variant="ghost">
-                                                                    <MoreVertical className="w-4 h-4" />
-                                                                </Button>
+                                                                {booking.status === "confirmed" && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="default"
+                                                                        onClick={() =>
+                                                                            handleBookingAction(booking.id, "check-in")
+                                                                        }
+                                                                        title="Check In Guest"
+                                                                    >
+                                                                        <User className="w-4 h-4 mr-1" />
+                                                                        Check In
+                                                                    </Button>
+                                                                )}
+                                                                {booking.status === "checked-in" && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() =>
+                                                                            handleBookingAction(booking.id, "check-out")
+                                                                        }
+                                                                        title="Check Out Guest"
+                                                                    >
+                                                                        <LogOut className="w-4 h-4 mr-1" />
+                                                                        Check Out
+                                                                    </Button>
+                                                                )}
+                                                                {(booking.status === "cancelled" || booking.status === "checked-out") && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        No actions available
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -608,6 +775,15 @@ export function HotelOwnerDashboard() {
                                         </table>
                                     </div>
                                 </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                        <h3 className="text-lg font-semibold mb-2">No bookings found</h3>
+                                        <p className="text-muted-foreground">
+                                            {searchQuery ? "Try adjusting your search" : "No bookings yet"}
+                                        </p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>
