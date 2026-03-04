@@ -44,6 +44,23 @@ const AMENITIES = [
     { id: "laundry", label: "Laundry Service", icon: CheckCircle },
 ]
 
+const COMMON_AMENITIES = [
+    "WiFi",
+    "TV",
+    "Air Conditioning",
+    "Mini Bar",
+    "Room Service",
+    "Safe",
+    "Balcony",
+    "Ocean View",
+    "Bathtub",
+    "Shower",
+    "Hair Dryer",
+    "Iron",
+    "Desk",
+    "Seating Area",
+]
+
 function Clock({ className }: { className?: string }) {
     return (
         <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,11 +73,14 @@ interface RoomData {
     id: string
     name: string
     description: string
-    price: string
-    maxGuests: string
+    price: number
+    maxGuests: number
     beds: string
     size: string
     amenities: string[]
+    status: "available" | "occupied" | "maintenance"
+    roomNumber: string
+    floor: string
 }
 
 export function HotelOwnerOnboarding() {
@@ -101,16 +121,19 @@ export function HotelOwnerOnboarding() {
             id: `room-${Date.now()}`,
             name: "",
             description: "",
-            price: "",
-            maxGuests: "2",
-            beds: "1 Queen Bed",
+            price: 0,
+            maxGuests: 2,
+            beds: "1 King Bed",
             size: "",
             amenities: [],
+            status: "available",
+            roomNumber: "",
+            floor: "",
         }
         updateFormData("rooms", [...formData.rooms, newRoom])
     }
 
-    const updateRoom = (index: number, key: string, value: string) => {
+    const updateRoom = (index: number, key: string, value: string | number) => {
         const updatedRooms = [...formData.rooms]
         updatedRooms[index] = { ...updatedRooms[index], [key]: value }
         updateFormData("rooms", updatedRooms)
@@ -157,6 +180,20 @@ export function HotelOwnerOnboarding() {
         setLoading(true)
 
         try {
+            // Transform rooms data to match backend schema
+            const transformedRooms = formData.rooms.map((room) => ({
+                name: room.name,
+                description: room.description,
+                price: room.price,
+                maxGuests: room.maxGuests,
+                beds: room.beds,
+                size: room.size,
+                amenities: room.amenities,
+                status: room.status,
+                roomNumber: room.roomNumber,
+                floor: room.floor,
+            }))
+
             // Prepare hotel data for API
             const hotelPayload = {
                 hotelName: formData.hotelName,
@@ -169,7 +206,7 @@ export function HotelOwnerOnboarding() {
                 email: formData.email,
                 website: formData.website,
                 amenities: formData.amenities,
-                rooms: formData.rooms,
+                rooms: transformedRooms,
                 checkInTime: formData.checkInTime,
                 checkOutTime: formData.checkOutTime,
                 cancellationPolicy: formData.cancellationPolicy,
@@ -480,10 +517,29 @@ export function HotelOwnerOnboarding() {
                                     <div>
                                         <Label>Room Name *</Label>
                                         <Input
-                                            placeholder="e.g., Deluxe Sea View"
+                                            placeholder="e.g., Deluxe Sea View Room"
                                             value={room.name}
                                             onChange={(e) => updateRoom(index, "name", e.target.value)}
                                             className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Room Number</Label>
+                                        <Input
+                                            placeholder="e.g., 101"
+                                            value={room.roomNumber}
+                                            onChange={(e) => updateRoom(index, "roomNumber", e.target.value)}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label>Description</Label>
+                                        <Textarea
+                                            placeholder="Describe the room features and amenities..."
+                                            value={room.description}
+                                            onChange={(e) => updateRoom(index, "description", e.target.value)}
+                                            className="mt-1"
+                                            rows={3}
                                         />
                                     </div>
                                     <div>
@@ -492,43 +548,51 @@ export function HotelOwnerOnboarding() {
                                             <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
                                                 type="number"
+                                                min="0"
                                                 placeholder="5000"
                                                 value={room.price}
-                                                onChange={(e) => updateRoom(index, "price", e.target.value)}
+                                                onChange={(e) => updateRoom(index, "price", Number(e.target.value))}
                                                 className="pl-10"
                                             />
                                         </div>
                                     </div>
-                                    <div className="md:col-span-2">
-                                        <Label>Description</Label>
-                                        <Textarea
-                                            placeholder="Describe the room features..."
-                                            value={room.description}
-                                            onChange={(e) => updateRoom(index, "description", e.target.value)}
-                                            className="mt-1"
-                                            rows={2}
-                                        />
-                                    </div>
                                     <div>
-                                        <Label>Max Guests</Label>
+                                        <Label>Max Guests *</Label>
                                         <div className="relative mt-1">
                                             <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
                                                 type="number"
                                                 min="1"
-                                                max="10"
                                                 value={room.maxGuests}
-                                                onChange={(e) => updateRoom(index, "maxGuests", e.target.value)}
+                                                onChange={(e) => updateRoom(index, "maxGuests", Number(e.target.value))}
                                                 className="pl-10"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <Label>Bed Configuration</Label>
+                                        <Label>Room Size *</Label>
+                                        <Input
+                                            placeholder="e.g., 30 sqm"
+                                            value={room.size}
+                                            onChange={(e) => updateRoom(index, "size", e.target.value)}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Floor</Label>
+                                        <Input
+                                            placeholder="e.g., 1st Floor"
+                                            value={room.floor}
+                                            onChange={(e) => updateRoom(index, "floor", e.target.value)}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>Bed Configuration *</Label>
                                         <div className="relative mt-1">
                                             <Bed className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
-                                                placeholder="1 King Bed"
+                                                placeholder="e.g., 1 King Bed or 2 Twin Beds"
                                                 value={room.beds}
                                                 onChange={(e) => updateRoom(index, "beds", e.target.value)}
                                                 className="pl-10"
@@ -536,13 +600,41 @@ export function HotelOwnerOnboarding() {
                                         </div>
                                     </div>
                                     <div>
-                                        <Label>Room Size (sq ft)</Label>
-                                        <Input
-                                            placeholder="450"
-                                            value={room.size}
-                                            onChange={(e) => updateRoom(index, "size", e.target.value)}
-                                            className="mt-1"
-                                        />
+                                        <Label>Status</Label>
+                                        <select
+                                            value={room.status}
+                                            onChange={(e) => updateRoom(index, "status", e.target.value)}
+                                            className="flex h-9 w-full rounded-xl border border-input bg-input/30 px-3 py-1 text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1"
+                                        >
+                                            <option value="available">Available</option>
+                                            <option value="occupied">Occupied</option>
+                                            <option value="maintenance">Maintenance</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Amenities</Label>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {COMMON_AMENITIES.map((amenity) => (
+                                            <label
+                                                key={amenity}
+                                                className="flex items-center gap-2 text-sm cursor-pointer"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={room.amenities.includes(amenity)}
+                                                    onChange={() => {
+                                                        const newAmenities = room.amenities.includes(amenity)
+                                                            ? room.amenities.filter((a) => a !== amenity)
+                                                            : [...room.amenities, amenity]
+                                                        updateRoom(index, "amenities", newAmenities)
+                                                    }}
+                                                    className="h-4 w-4 rounded border-input"
+                                                />
+                                                {amenity}
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
                             </CardContent>

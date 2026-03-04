@@ -44,6 +44,25 @@ export interface Room {
   size: string
   amenities: string[]
   status: "available" | "occupied" | "maintenance"
+  roomNumber?: string
+  floor?: string
+}
+
+export interface CreateRoomData {
+  name: string
+  description?: string
+  price: number
+  maxGuests: number
+  beds: string
+  size: string
+  amenities?: string[]
+  status?: "available" | "occupied" | "maintenance"
+  roomNumber?: string
+  floor?: string
+}
+
+export interface UpdateRoomData extends CreateRoomData {
+  id: string
 }
 
 export interface OwnerProfile {
@@ -86,6 +105,26 @@ export const ownerApi = {
 
   getRooms: async () => {
     const response = await api.get("/owner/rooms")
+    return response.data
+  },
+
+  getRoom: async (roomId: string) => {
+    const response = await api.get(`/owner/rooms/${roomId}`)
+    return response.data
+  },
+
+  createRoom: async (data: CreateRoomData) => {
+    const response = await api.post("/owner/rooms", data)
+    return response.data
+  },
+
+  updateRoom: async (roomId: string, data: UpdateRoomData) => {
+    const response = await api.put(`/owner/rooms/${roomId}`, data)
+    return response.data
+  },
+
+  deleteRoom: async (roomId: string) => {
+    const response = await api.delete(`/owner/rooms/${roomId}`)
     return response.data
   },
 }

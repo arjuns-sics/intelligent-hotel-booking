@@ -194,6 +194,20 @@ const completeOnboarding = async (req, res) => {
       petPolicy,
     } = req.body
 
+    // Transform rooms to match the schema structure
+    const transformedRooms = rooms ? rooms.map(room => ({
+      name: room.name,
+      description: room.description || "",
+      price: room.price,
+      maxGuests: room.maxGuests || 2,
+      beds: room.beds || "1 King Bed",
+      size: room.size || "30 sqm",
+      amenities: room.amenities || [],
+      status: room.status || "available",
+      roomNumber: room.roomNumber || "",
+      floor: room.floor || "",
+    })) : []
+
     const updateData = {
       onboardingComplete: true,
       hotelName,
@@ -204,7 +218,7 @@ const completeOnboarding = async (req, res) => {
       pincode,
       website,
       amenities,
-      rooms,
+      rooms: transformedRooms,
       checkInTime,
       checkOutTime,
       cancellationPolicy,
@@ -262,7 +276,7 @@ const getOwnerRooms = async (req, res) => {
       })
     }
 
-    // Transform rooms to include status based on bookings
+    // Transform rooms to include all fields
     const rooms = owner.rooms.map((room, index) => ({
       id: room._id?.toString() || `room-${index}`,
       name: room.name,
@@ -272,7 +286,9 @@ const getOwnerRooms = async (req, res) => {
       beds: room.beds || "1 King Bed",
       size: room.size || "30 sqm",
       amenities: room.amenities || [],
-      status: "available", // Default status, can be enhanced with booking logic
+      status: room.status || "available",
+      roomNumber: room.roomNumber || "",
+      floor: room.floor || "",
     }))
 
     res.status(200).json({

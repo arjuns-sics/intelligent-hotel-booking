@@ -27,9 +27,14 @@ import {
     Eye,
     Download,
     Filter,
+    Trash2,
 } from "lucide-react"
 import { type Room } from "@/lib/api"
 import { useRooms } from "@/hooks/useRooms"
+import { AddRoomDialog } from "@/components/AddRoomDialog"
+import { EditRoomDialog } from "@/components/EditRoomDialog"
+import { ViewRoomDialog } from "@/components/ViewRoomDialog"
+import { DeleteRoomDialog } from "@/components/DeleteRoomDialog"
 
 interface Booking {
     id: string
@@ -157,6 +162,13 @@ export function HotelOwnerDashboard() {
     const [bookings, setBookings] = useState<Booking[]>(DUMMY_BOOKINGS)
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
+
+    // Room dialog states
+    const [addRoomOpen, setAddRoomOpen] = useState(false)
+    const [editRoomOpen, setEditRoomOpen] = useState(false)
+    const [viewRoomOpen, setViewRoomOpen] = useState(false)
+    const [deleteRoomOpen, setDeleteRoomOpen] = useState(false)
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
 
     const ownerData = JSON.parse(localStorage.getItem("hotelOwner") || "{}")
     const hotelData = JSON.parse(localStorage.getItem("hotelData") || "{}")
@@ -603,7 +615,7 @@ export function HotelOwnerDashboard() {
                                     Track and manage room availability
                                 </p>
                             </div>
-                            <Button>
+                            <Button onClick={() => setAddRoomOpen(true)}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 Add Room
                             </Button>
@@ -625,7 +637,7 @@ export function HotelOwnerDashboard() {
                                         <p className="text-muted-foreground mb-4">
                                             Add your first room to start managing availability
                                         </p>
-                                        <Button>
+                                        <Button onClick={() => setAddRoomOpen(true)}>
                                             <Plus className="w-4 h-4 mr-2" />
                                             Add Room
                                         </Button>
@@ -690,13 +702,40 @@ export function HotelOwnerDashboard() {
                                                 </div>
                                             )}
                                             <div className="flex gap-2">
-                                                <Button size="sm" variant="outline" className="flex-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="flex-1"
+                                                    onClick={() => {
+                                                        setSelectedRoom(room)
+                                                        setEditRoomOpen(true)
+                                                    }}
+                                                >
                                                     <Edit className="w-3 h-3 mr-1" />
                                                     Edit
                                                 </Button>
-                                                <Button size="sm" variant="outline" className="flex-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="flex-1"
+                                                    onClick={() => {
+                                                        setSelectedRoom(room)
+                                                        setViewRoomOpen(true)
+                                                    }}
+                                                >
                                                     <Eye className="w-3 h-3 mr-1" />
                                                     View
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="text-destructive hover:text-destructive"
+                                                    onClick={() => {
+                                                        setSelectedRoom(room)
+                                                        setDeleteRoomOpen(true)
+                                                    }}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </CardContent>
@@ -846,6 +885,25 @@ export function HotelOwnerDashboard() {
                         </div>
                     </TabsContent>
                 </Tabs>
+
+                {/* Room Management Dialogs */}
+                <AddRoomDialog open={addRoomOpen} onOpenChange={setAddRoomOpen} />
+                <EditRoomDialog
+                    open={editRoomOpen}
+                    onOpenChange={setEditRoomOpen}
+                    room={selectedRoom}
+                />
+                <ViewRoomDialog
+                    open={viewRoomOpen}
+                    onOpenChange={setViewRoomOpen}
+                    room={selectedRoom}
+                />
+                <DeleteRoomDialog
+                    open={deleteRoomOpen}
+                    onOpenChange={setDeleteRoomOpen}
+                    roomId={selectedRoom?.id || null}
+                    roomName={selectedRoom?.name || ""}
+                />
             </div>
         </div>
     )

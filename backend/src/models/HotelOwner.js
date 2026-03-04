@@ -76,6 +76,13 @@ const hotelOwnerSchema = new mongoose.Schema(
         beds: String,
         size: String,
         amenities: [String],
+        status: {
+          type: String,
+          enum: ["available", "occupied", "maintenance"],
+          default: "available",
+        },
+        roomNumber: String,
+        floor: String,
       }],
       default: [],
     },
