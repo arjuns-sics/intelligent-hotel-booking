@@ -5,6 +5,7 @@ const router = express.Router()
 const authRoutes = require("./auth")
 const ownerRoutes = require("./ownerRoutes")
 const hotelRoutes = require("./hotels")
+const bookingRoutes = require("./bookings")
 
 router.get("/", (req, res) => {
   res.json({ message: "API is running" })
@@ -18,5 +19,8 @@ router.use("/owner", ownerRoutes)
 
 // Public hotel routes
 router.use("/hotels", hotelRoutes)
+
+// User booking routes (protected)
+router.use("/bookings", bookingRoutes)
 
 module.exports = router

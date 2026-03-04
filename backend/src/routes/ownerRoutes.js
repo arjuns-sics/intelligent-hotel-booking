@@ -6,6 +6,7 @@ const {
   getOwnerProfile,
   completeOnboarding,
 } = require("../controllers/ownerAuthController")
+const { getHotelBookings } = require("../controllers/bookingController")
 const { protectOwner } = require("../middleware/auth")
 const roomRoutes = require("./rooms")
 
@@ -111,5 +112,28 @@ router.patch("/onboarding/complete", protectOwner, completeOnboarding)
 
 // Room management routes
 router.use("/rooms", roomRoutes)
+
+/**
+ * @swagger
+ * /owner/bookings:
+ *   get:
+ *     summary: Get all bookings for hotel owner's hotel
+ *     tags: [Hotel Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, confirmed, checked-in, checked-out, cancelled, all]
+ *         description: Filter by booking status
+ *     responses:
+ *       200:
+ *         description: Bookings retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/bookings", protectOwner, getHotelBookings)
 
 module.exports = router

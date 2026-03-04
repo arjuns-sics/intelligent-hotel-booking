@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   MapPin,
   Star,
@@ -22,9 +23,11 @@ import {
   CheckCircle,
   Heart,
   Share2,
-  Loader2
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
-import { api } from "@/lib/api"
+import { api, bookingApi } from "@/lib/api"
+import { toast } from "sonner"
 
 const AMENITY_ICONS: Record<string, React.ElementType> = {
   wifi: Wifi,
@@ -86,12 +89,15 @@ export function HotelDetails() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<string>('')
-  
+  const [specialRequests, setSpecialRequests] = useState('')
+  const [showBookingConfirmation, setShowBookingConfirmation] = useState(false)
+  const queryClient = useQueryClient()
+
   // Get initial values from URL params
   const initialGuests = parseInt(searchParams.get('guests') || '2')
   const initialCheckIn = searchParams.get('checkIn') || ''
   const initialCheckOut = searchParams.get('checkOut') || ''
-  
+
   const [bookingData, setBookingData] = useState({
     checkIn: initialCheckIn,
     checkOut: initialCheckOut,
@@ -109,6 +115,27 @@ export function HotelDetails() {
   })
 
   const hotel = hotelData
+
+  // Mutation for creating booking
+  const createBookingMutation = useMutation({
+    mutationFn: async (bookingData: any) => {
+      const response = await bookingApi.createBooking(bookingData)
+      return response.data
+    },
+    onSuccess: (data) => {
+      toast.success('Booking confirmed!', {
+        description: `Your booking ${data.bookingId} has been created successfully.`,
+      })
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      setShowBookingConfirmation(false)
+      navigate('/bookings')
+    },
+    onError: (error: any) => {
+      toast.error('Booking failed', {
+        description: error.response?.data?.message || 'Unable to create booking. Please try again.',
+      })
+    },
+  })
 
   // Filter rooms based on guest count
   const availableRooms = useMemo(() => {
@@ -175,11 +202,36 @@ export function HotelDetails() {
 
   const handleBookNow = () => {
     if (!selectedRoom) {
-      alert('Please select a room first')
+      toast.error('Please select a room first')
       return
     }
-    console.log('Booking:', { hotelId: hotel.id, roomId: selectedRoom, ...bookingData, totalPrice })
-    // Navigate to booking page or show booking modal
+    if (numberOfNights === 0) {
+      toast.error('Please select check-in and check-out dates')
+      return
+    }
+    setShowBookingConfirmation(true)
+  }
+
+  const confirmBooking = () => {
+    if (!selectedRoomDetails || !hotel) return
+
+    createBookingMutation.mutate({
+      hotelId: hotel.id,
+      roomId: selectedRoom,
+      roomType: selectedRoomDetails.name,
+      roomDetails: {
+        price: selectedRoomDetails.price,
+        maxGuests: selectedRoomDetails.maxGuests,
+        beds: selectedRoomDetails.beds,
+        size: selectedRoomDetails.size,
+        amenities: selectedRoomDetails.amenities,
+      },
+      checkIn: bookingData.checkIn,
+      checkOut: bookingData.checkOut,
+      guests: bookingData.guests,
+      pricePerNight: selectedRoomDetails.price,
+      specialRequests,
+    })
   }
 
   const getFullAddress = () => {
@@ -566,6 +618,127 @@ export function HotelDetails() {
           </div>
         </div>
       </div>
+
+      {/* Booking Confirmation Modal */}
+      {showBookingConfirmation && selectedRoomDetails && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Confirm Your Booking</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowBookingConfirmation(false)}
+                >
+                  <AlertCircle className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <img
+                    src={hotel.image}
+                    alt={hotel.name}
+                    className="w-24 h-24 rounded-lg object-cover"
+                  />
+                  <div>
+                    <h3 className="font-semibold">{hotel.name}</h3>
+                    <p className="text-sm text-muted-foreground">{hotel.location}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Room Type</span>
+                    <span className="font-medium">{selectedRoomDetails.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Check-in</span>
+                    <span className="font-medium">{new Date(bookingData.checkIn).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Check-out</span>
+                    <span className="font-medium">{new Date(bookingData.checkOut).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Guests</span>
+                    <span className="font-medium">{bookingData.guests}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Number of Nights</span>
+                    <span className="font-medium">{numberOfNights}</span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="specialRequests">Special Requests (Optional)</Label>
+                  <Textarea
+                    id="specialRequests"
+                    placeholder="Any special requirements or requests..."
+                    value={specialRequests}
+                    onChange={(e) => setSpecialRequests(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-base">
+                    <span className="font-medium">Price per Night</span>
+                    <span>{formatPrice(selectedRoomDetails.price)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-primary">
+                    <span>Total Amount</span>
+                    <span>{formatPrice(totalPrice)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-muted p-3 rounded-lg space-y-1 text-xs">
+                  <p className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                    Free cancellation available
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                    No booking fees
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowBookingConfirmation(false)}
+                  disabled={createBookingMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={confirmBooking}
+                  disabled={createBookingMutation.isPending}
+                >
+                  {createBookingMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : (
+                    `Confirm Booking - ${formatPrice(totalPrice)}`
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

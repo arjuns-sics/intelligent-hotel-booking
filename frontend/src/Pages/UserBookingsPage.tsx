@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +29,10 @@ import {
     LogOut,
     Send,
     Image,
+    Loader2,
 } from "lucide-react"
+import { bookingApi } from "@/lib/api"
+import { toast } from "sonner"
 
 interface Booking {
     id: string
@@ -153,8 +157,7 @@ const DUMMY_REVIEWS: Review[] = [
 
 export function UserBookingsPage() {
     const navigate = useNavigate()
-    const [bookings, setBookings] = useState<Booking[]>(DUMMY_BOOKINGS)
-    const [reviews, setReviews] = useState<Review[]>(DUMMY_REVIEWS)
+    const queryClient = useQueryClient()
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [showReviewModal, setShowReviewModal] = useState(false)
@@ -164,19 +167,60 @@ export function UserBookingsPage() {
         comment: "",
     })
 
+    // Fetch bookings from API
+    const { data: bookingsData, isLoading, refetch } = useQuery({
+        queryKey: ['bookings', statusFilter],
+        queryFn: async () => {
+            const response = await bookingApi.getUserBookings(statusFilter === "all" ? undefined : statusFilter)
+            return response.data
+        },
+        retry: false,
+    })
+
+    const bookings = bookingsData?.bookings || []
+
+    // Use dummy reviews for now (can be implemented later)
+    const [reviews, setReviews] = useState<Review[]>(DUMMY_REVIEWS)
+
+    // Mutation for cancelling booking
+    const cancelBookingMutation = useMutation({
+        mutationFn: async (bookingId: string) => {
+            const response = await bookingApi.cancelBooking(bookingId)
+            return response.data
+        },
+        onSuccess: () => {
+            toast.success('Booking cancelled successfully')
+            refetch()
+        },
+        onError: (error: any) => {
+            toast.error('Failed to cancel booking', {
+                description: error.response?.data?.message || 'Please try again.',
+            })
+        },
+    })
+
     // const userData = JSON.parse(localStorage.getItem("user") || "{}")
 
     const stats = {
-        upcoming: bookings.filter((b) => b.status === "upcoming" || b.status === "checked-in").length,
-        completed: bookings.filter((b) => b.status === "completed").length,
+        upcoming: bookings.filter((b) => b.status === "confirmed" || b.status === "checked-in" || b.status === "pending").length,
+        completed: bookings.filter((b) => b.status === "checked-out").length,
         cancelled: bookings.filter((b) => b.status === "cancelled").length,
         totalSpent: bookings
-            .filter((b) => b.status === "completed" || b.status === "checked-in" || b.status === "upcoming")
+            .filter((b) => b.status === "checked-out" || b.status === "checked-in" || b.status === "confirmed" || b.status === "pending")
             .reduce((sum, b) => sum + b.totalAmount, 0),
     }
 
     const getStatusBadge = (status: Booking["status"]) => {
-        const variants: Record<Booking["status"], "link" | "default" | "outline" | "secondary" | "ghost" | "destructive" | null | undefined> = {
+        const statusMap: Record<Booking["status"], "upcoming" | "completed" | "cancelled" | "checked-in"> = {
+            pending: "upcoming",
+            confirmed: "upcoming",
+            "checked-in": "checked-in",
+            "checked-out": "completed",
+            cancelled: "cancelled",
+        }
+        const mappedStatus = statusMap[status] || "upcoming"
+        
+        const variants: Record<string, "link" | "default" | "outline" | "secondary" | "ghost" | "destructive" | null | undefined> = {
             upcoming: "default",
             completed: "secondary",
             cancelled: "destructive",
@@ -188,9 +232,9 @@ export function UserBookingsPage() {
             cancelled: XCircle,
             "checked-in": Clock,
         }
-        const Icon = icons[status]
+        const Icon = icons[mappedStatus]
         return (
-            <Badge variant={variants[status]} className="gap-1">
+            <Badge variant={variants[mappedStatus]} className="gap-1">
                 <Icon className="w-3 h-3" />
                 {status.replace("-", " ").toUpperCase()}
             </Badge>
@@ -198,9 +242,7 @@ export function UserBookingsPage() {
     }
 
     const handleCancelBooking = (bookingId: string) => {
-        setBookings((prev) =>
-            prev.map((b) => (b.id === bookingId ? { ...b, status: "cancelled" } : b))
-        )
+        cancelBookingMutation.mutate(bookingId)
     }
 
     const handleWriteReview = (booking: Booking) => {
@@ -384,9 +426,9 @@ export function UserBookingsPage() {
                                             className="px-3 py-2 border border-input rounded-md bg-background text-sm"
                                         >
                                             <option value="all">All Status</option>
-                                            <option value="upcoming">Upcoming</option>
+                                            <option value="confirmed">Confirmed</option>
                                             <option value="checked-in">Checked In</option>
-                                            <option value="completed">Completed</option>
+                                            <option value="checked-out">Completed</option>
                                             <option value="cancelled">Cancelled</option>
                                         </select>
                                         {/* <Button size="sm">
@@ -397,7 +439,12 @@ export function UserBookingsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {filteredBookings.length > 0 ? (
+                                {isLoading ? (
+                                    <div className="text-center py-12">
+                                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                                        <p className="text-muted-foreground">Loading your bookings...</p>
+                                    </div>
+                                ) : filteredBookings.length > 0 ? (
                                     <div className="space-y-4">
                                         {filteredBookings.map((booking) => (
                                             <div

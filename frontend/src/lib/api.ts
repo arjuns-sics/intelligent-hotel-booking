@@ -13,7 +13,8 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("hotelOwnerToken")
+    // Try hotel owner token first, then user token
+    const token = localStorage.getItem("hotelOwnerToken") || localStorage.getItem("token")
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -82,6 +83,43 @@ export interface OwnerProfile {
   onboardingComplete: boolean
 }
 
+export interface Booking {
+  id: string
+  bookingId: string
+  hotelName: string
+  hotelImage: string
+  location: string
+  roomType: string
+  roomId: string
+  checkIn: string
+  checkOut: string
+  guests: number
+  numberOfNights: number
+  pricePerNight: number
+  totalAmount: number
+  status: "pending" | "confirmed" | "checked-in" | "checked-out" | "cancelled"
+  bookingDate: string
+  hotelId: string
+}
+
+export interface CreateBookingData {
+  hotelId: string
+  roomId: string
+  roomType: string
+  roomDetails?: {
+    price: number
+    maxGuests: number
+    beds: string
+    size: string
+    amenities: string[]
+  }
+  checkIn: string
+  checkOut: string
+  guests: number
+  pricePerNight: number
+  specialRequests?: string
+}
+
 export const ownerApi = {
   register: async (data: {
     name: string
@@ -125,6 +163,29 @@ export const ownerApi = {
 
   deleteRoom: async (roomId: string) => {
     const response = await api.delete(`/owner/rooms/${roomId}`)
+    return response.data
+  },
+}
+
+export const bookingApi = {
+  createBooking: async (data: CreateBookingData) => {
+    const response = await api.post("/bookings", data)
+    return response.data
+  },
+
+  getUserBookings: async (status?: string) => {
+    const params = status && status !== "all" ? { status } : {}
+    const response = await api.get("/bookings", { params })
+    return response.data
+  },
+
+  getBookingById: async (bookingId: string) => {
+    const response = await api.get(`/bookings/${bookingId}`)
+    return response.data
+  },
+
+  cancelBooking: async (bookingId: string) => {
+    const response = await api.delete(`/bookings/${bookingId}`)
     return response.data
   },
 }

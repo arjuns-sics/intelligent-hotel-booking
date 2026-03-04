@@ -48,7 +48,7 @@ export function FilterSidebar({ filters, onFilterChange, onPriceChange }: Filter
               <Input
                 placeholder="Where are you going?"
                 value={filters.location}
-                onChange={(e) => onFilterChange('location', e.target.value)}
+                onChange={(e) => onFilterChangeRef.current('location', e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -60,7 +60,7 @@ export function FilterSidebar({ filters, onFilterChange, onPriceChange }: Filter
               <Input
                 type="date"
                 value={filters.checkIn}
-                onChange={(e) => onFilterChange('checkIn', e.target.value)}
+                onChange={(e) => onFilterChangeRef.current('checkIn', e.target.value)}
               />
             </div>
             <div>
@@ -68,7 +68,7 @@ export function FilterSidebar({ filters, onFilterChange, onPriceChange }: Filter
               <Input
                 type="date"
                 value={filters.checkOut}
-                onChange={(e) => onFilterChange('checkOut', e.target.value)}
+                onChange={(e) => onFilterChangeRef.current('checkOut', e.target.value)}
               />
             </div>
           </div>
@@ -80,7 +80,7 @@ export function FilterSidebar({ filters, onFilterChange, onPriceChange }: Filter
               min="1"
               max="10"
               value={filters.guests}
-              onChange={(e) => onFilterChange('guests', parseInt(e.target.value))}
+              onChange={(e) => onFilterChangeRef.current('guests', parseInt(e.target.value))}
             />
           </div>
         </div>
