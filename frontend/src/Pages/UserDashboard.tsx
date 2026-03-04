@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, /*useEffect,*/ useMemo } from "react"
+import { useState, useMemo } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
@@ -7,8 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Search, MapPin, /*Calendar,*/ Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
-import {api} from "@/lib/api"
+import { Search, MapPin, Star, Building2, Wifi, UtensilsCrossed, Car, Dumbbell, Users, Filter } from "lucide-react"
+import { api } from "@/lib/api"
+
+interface Room {
+  id: string
+  name: string
+  description: string
+  price: number
+  maxGuests: number
+  beds: string
+  size: string
+  amenities: string[]
+  status: "available" | "occupied" | "maintenance"
+  roomNumber: string
+  floor: string
+}
 
 interface Hotel {
   id: string
@@ -21,6 +35,8 @@ interface Hotel {
   features: string[]
   availableRooms: number
   guests: number
+  description?: string
+  rooms?: Room[]
 }
 
 interface SearchFilters {
@@ -42,104 +58,8 @@ const AMENITIES = [
   { id: 'pool', label: 'Pool', icon: Building2 },
 ]
 
-const DUMMY_HOTELS: Hotel[] = [
-  {
-    id: '1',
-    name: 'The Grand Palace Hotel',
-    location: 'Mumbai, Maharashtra',
-    price: 12500,
-    rating: 4.8,
-    reviews: 324,
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-    features: ['wifi', 'restaurant', 'spa', 'pool'],
-    availableRooms: 8,
-    guests: 4
-  },
-  {
-    id: '2',
-    name: 'Ocean View Resort',
-    location: 'Goa, India',
-    price: 8900,
-    rating: 4.6,
-    reviews: 512,
-    image: 'https://images.unsplash.com/photo-1570206986634-afd7cccb68d3?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    features: ['wifi', 'restaurant', 'parking', 'pool'],
-    availableRooms: 12,
-    guests: 3
-  },
-  {
-    id: '3',
-    name: 'Mountain Retreat Spa',
-    location: 'Manali, Himachal Pradesh',
-    price: 6500,
-    rating: 4.7,
-    reviews: 289,
-    image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-    features: ['wifi', 'spa', 'restaurant'],
-    availableRooms: 5,
-    guests: 2
-  },
-  {
-    id: '4',
-    name: 'Royal Heritage Hotel',
-    location: 'Jaipur, Rajasthan',
-    price: 15000,
-    rating: 4.9,
-    reviews: 445,
-    image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80',
-    features: ['wifi', 'restaurant', 'spa', 'parking', 'pool'],
-    availableRooms: 3,
-    guests: 4
-  },
-  {
-    id: '5',
-    name: 'City Center Business Hotel',
-    location: 'Bangalore, Karnataka',
-    price: 5500,
-    rating: 4.3,
-    reviews: 678,
-    image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-    features: ['wifi', 'restaurant', 'parking'],
-    availableRooms: 20,
-    guests: 2
-  },
-  {
-    id: '6',
-    name: 'Backwater Paradise',
-    location: 'Alleppey, Kerala',
-    price: 7800,
-    rating: 4.5,
-    reviews: 234,
-    image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80',
-    features: ['wifi', 'restaurant', 'spa'],
-    availableRooms: 6,
-    guests: 3
-  },
-  {
-    id: '7',
-    name: 'Himalayan Heights',
-    location: 'Shimla, Himachal Pradesh',
-    price: 9200,
-    rating: 4.6,
-    reviews: 187,
-    image: 'https://images.unsplash.com/photo-1549294413-26f195200c16?w=800&q=80',
-    features: ['wifi', 'restaurant', 'spa', 'parking'],
-    availableRooms: 4,
-    guests: 4
-  },
-  {
-    id: '8',
-    name: 'Beachfront Luxury Suites',
-    location: 'Pondicherry, India',
-    price: 11000,
-    rating: 4.7,
-    reviews: 356,
-    image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80',
-    features: ['wifi', 'restaurant', 'pool', 'spa'],
-    availableRooms: 7,
-    guests: 3
-  }
-]
+// Empty array - will use API data or show "no hotels" message
+const DUMMY_HOTELS: Hotel[] = []
 
 export function UserDashboard() {
   const navigate = useNavigate()
@@ -158,34 +78,41 @@ export function UserDashboard() {
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('rating')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  const { data: hotels, isLoading, /*error*/ } = useQuery({
+  const { data: hotelsResponse, isLoading, error } = useQuery({
     queryKey: ['hotels', filters, sortBy, sortOrder],
     queryFn: async () => {
       const response = await api.get('/hotels', {
         params: {
-          ...filters,
+          location: filters.location,
+          checkIn: filters.checkIn,
+          checkOut: filters.checkOut,
+          guests: filters.guests,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          rating: filters.rating,
+          amenities: filters.amenities.length > 0 ? filters.amenities.join(',') : undefined,
           sortBy,
           sortOrder
         }
       })
-      return response.data.hotels as Hotel[]
+      return response.data.data as { hotels: Hotel[]; count: number }
     },
     retry: false,
-    initialData: DUMMY_HOTELS,
-    placeholderData: DUMMY_HOTELS
   })
 
-  // Filter and sort hotels from API or dummy data
+  const hotels = hotelsResponse?.hotels || []
+
+  // Filter and sort hotels from API
   const filteredHotels = useMemo(() => {
-    const hotelData = (hotels || DUMMY_HOTELS)
-    
+    const hotelData = hotels || []
+
     let result = hotelData.filter(hotel => {
       // Location filter (case-insensitive)
-      if (filters.location && !hotel.location.toLowerCase().includes(filters.location.toLowerCase()) && 
+      if (filters.location && !hotel.location.toLowerCase().includes(filters.location.toLowerCase()) &&
           !hotel.name.toLowerCase().includes(filters.location.toLowerCase())) {
         return false
       }
-      
+
       // Price range filter
       if (filters.minPrice && hotel.price < filters.minPrice) {
         return false
@@ -193,12 +120,12 @@ export function UserDashboard() {
       if (filters.maxPrice && hotel.price > filters.maxPrice) {
         return false
       }
-      
+
       // Rating filter
       if (filters.rating && hotel.rating < filters.rating) {
         return false
       }
-      
+
       // Amenities filter (hotel must have all selected amenities)
       if (filters.amenities.length > 0) {
         const hasAllAmenities = filters.amenities.every(amenity => hotel.features.includes(amenity))
@@ -206,15 +133,15 @@ export function UserDashboard() {
           return false
         }
       }
-      
+
       // Guests filter
       if (filters.guests && hotel.guests && hotel.guests < filters.guests) {
         return false
       }
-      
+
       return true
     })
-    
+
     // Sorting
     result = [...result].sort((a, b) => {
       let comparison = 0
@@ -227,7 +154,7 @@ export function UserDashboard() {
       }
       return sortOrder === 'asc' ? comparison : -comparison
     })
-    
+
     return result
   }, [hotels, filters, sortBy, sortOrder])
 
@@ -296,6 +223,25 @@ export function UserDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Unable to load hotels</h3>
+            <p className="text-muted-foreground mb-6">
+              Please try again later or check your connection
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
           </div>
         </div>
       </div>
@@ -534,7 +480,7 @@ export function UserDashboard() {
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
@@ -567,7 +513,29 @@ export function UserDashboard() {
                         <span>{hotel.availableRooms} rooms available</span>
                       </div>
 
-                      <Separator className="mb-4" />
+                      {/* Show rooms if available */}
+                      {hotel.rooms && hotel.rooms.length > 0 && (
+                        <>
+                          <Separator className="mb-4" />
+                          <div className="space-y-2 mb-4">
+                            <h4 className="text-sm font-semibold">Available Rooms</h4>
+                            {hotel.rooms
+                              .filter(room => room.status === 'available')
+                              .slice(0, 3)
+                              .map((room) => (
+                                <div key={room.id} className="flex justify-between items-center text-sm">
+                                  <span className="text-muted-foreground">{room.name}</span>
+                                  <span className="font-medium">{formatPrice(room.price)}</span>
+                                </div>
+                              ))}
+                            {hotel.rooms.filter(r => r.status === 'available').length > 3 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{hotel.rooms.filter(r => r.status === 'available').length - 3} more rooms
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
