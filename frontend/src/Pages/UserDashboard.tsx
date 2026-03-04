@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Search, MapPin, Star, Building2, Users } from "lucide-react"
 import { api } from "@/lib/api"
 import { FilterSidebar } from "@/components/FilterSidebar"
@@ -223,7 +224,40 @@ export function UserDashboard() {
             </div>
 
             {/* Hotel Grid */}
-            {hotels.length > 0 ? (
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-5 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                        <div className="text-right space-y-2">
+                          <Skeleton className="h-8 w-20 ml-auto" />
+                          <Skeleton className="h-3 w-16 ml-auto" />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-5 w-16" />
+                      </div>
+                      <div className="flex items-center justify-between text-sm mb-4">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-8 w-24" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : hotels.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 {hotels.map((hotel) => (
                   <Card key={hotel.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
