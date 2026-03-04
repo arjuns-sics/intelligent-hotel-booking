@@ -5,6 +5,7 @@ const {
   loginOwner,
   getOwnerProfile,
   completeOnboarding,
+  getOwnerRooms,
 } = require("../controllers/ownerAuthController")
 const { protectOwner } = require("../middleware/auth")
 
@@ -107,5 +108,21 @@ router.get("/profile", protectOwner, getOwnerProfile)
  *         description: Unauthorized
  */
 router.patch("/onboarding/complete", protectOwner, completeOnboarding)
+
+/**
+ * @swagger
+ * /owner/rooms:
+ *   get:
+ *     summary: Get hotel owner's rooms
+ *     tags: [Hotel Owner Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Rooms retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/rooms", protectOwner, getOwnerRooms)
 
 module.exports = router

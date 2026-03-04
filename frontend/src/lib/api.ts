@@ -34,6 +34,35 @@ api.interceptors.response.use(
   }
 )
 
+export interface Room {
+  id: string
+  name: string
+  description?: string
+  price: number
+  maxGuests: number
+  beds: string
+  size: string
+  amenities: string[]
+  status: "available" | "occupied" | "maintenance"
+}
+
+export interface OwnerProfile {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  hotelName?: string
+  hotelDescription?: string
+  address?: string
+  city?: string
+  state?: string
+  pincode?: string
+  website?: string
+  amenities: string[]
+  rooms: Room[]
+  onboardingComplete: boolean
+}
+
 export const ownerApi = {
   register: async (data: {
     name: string
@@ -52,6 +81,11 @@ export const ownerApi = {
 
   getProfile: async () => {
     const response = await api.get("/owner/profile")
+    return response.data
+  },
+
+  getRooms: async () => {
+    const response = await api.get("/owner/rooms")
     return response.data
   },
 }

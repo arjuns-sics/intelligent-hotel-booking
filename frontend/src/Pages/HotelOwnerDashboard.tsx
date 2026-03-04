@@ -28,6 +28,8 @@ import {
     Download,
     Filter,
 } from "lucide-react"
+import { type Room } from "@/lib/api"
+import { useRooms } from "@/hooks/useRooms"
 
 interface Booking {
     id: string
@@ -40,14 +42,6 @@ interface Booking {
     totalAmount: number
     status: "confirmed" | "pending" | "cancelled" | "checked-in" | "checked-out"
     date: string
-}
-
-interface Room {
-    id: string
-    name: string
-    price: number
-    status: "available" | "occupied" | "maintenance"
-    guestName?: string
 }
 
 interface Review {
@@ -122,15 +116,6 @@ const DUMMY_BOOKINGS: Booking[] = [
     },
 ]
 
-const DUMMY_ROOMS: Room[] = [
-    { id: "101", name: "Deluxe Sea View - 101", price: 12500, status: "occupied", guestName: "Rajesh Kumar" },
-    { id: "102", name: "Deluxe Sea View - 102", price: 12500, status: "available" },
-    { id: "103", name: "Deluxe Sea View - 103", price: 12500, status: "available" },
-    { id: "201", name: "Executive Suite - 201", price: 22000, status: "occupied", guestName: "Priya Sharma" },
-    { id: "202", name: "Executive Suite - 202", price: 22000, status: "available" },
-    { id: "301", name: "Royal Palace Suite - 301", price: 45000, status: "maintenance" },
-]
-
 const DUMMY_REVIEWS: Review[] = [
     {
         id: "1",
@@ -177,6 +162,9 @@ export function HotelOwnerDashboard() {
     const hotelData = JSON.parse(localStorage.getItem("hotelData") || "{}")
 
     const hotelName = hotelData.hotelName || ownerData.hotelName || "The Grand Palace Hotel"
+
+    // Fetch rooms from backend using TanStack Query
+    const { data: rooms = [], isLoading: roomsLoading } = useRooms()
 
     const stats = {
         totalRevenue: 2840000,
@@ -621,53 +609,101 @@ export function HotelOwnerDashboard() {
                             </Button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {DUMMY_ROOMS.map((room) => (
-                                <Card key={room.id}>
-                                    <CardContent className="pt-4">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <h4 className="font-medium">{room.name}</h4>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {formatCurrency(room.price)}/night
-                                                </p>
+                        {roomsLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="text-center">
+                                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                    <p className="text-muted-foreground">Loading rooms...</p>
+                                </div>
+                            </div>
+                        ) : rooms.length === 0 ? (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="text-center py-12">
+                                        <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                                        <h3 className="text-lg font-semibold mb-2">No rooms found</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Add your first room to start managing availability
+                                        </p>
+                                        <Button>
+                                            <Plus className="w-4 h-4 mr-2" />
+                                            Add Room
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {rooms.map((room) => (
+                                    <Card key={room.id}>
+                                        <CardContent className="pt-4">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex-1">
+                                                    <h4 className="font-medium">{room.name}</h4>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {formatCurrency(room.price)}/night
+                                                    </p>
+                                                    {room.description && (
+                                                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                                                            {room.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <Badge
+                                                    variant={
+                                                        room.status === "available"
+                                                            ? "default"
+                                                            : room.status === "occupied"
+                                                            ? "secondary"
+                                                            : "destructive"
+                                                    }
+                                                >
+                                                    {room.status}
+                                                </Badge>
                                             </div>
-                                            <Badge
-                                                variant={
-                                                    room.status === "available"
-                                                        ? "default"
-                                                        : room.status === "occupied"
-                                                        ? "secondary"
-                                                        : "destructive"
-                                                }
-                                            >
-                                                {room.status}
-                                            </Badge>
-                                        </div>
-                                        {room.status === "occupied" && room.guestName && (
-                                            <div className="text-sm text-muted-foreground mb-3">
-                                                Guest: {room.guestName}
+                                            <div className="space-y-1 mb-3">
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Users className="w-3 h-3" />
+                                                    <span>Max {room.maxGuests} guests</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Home className="w-3 h-3" />
+                                                    <span>{room.beds}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Building2 className="w-3 h-3" />
+                                                    <span>{room.size}</span>
+                                                </div>
                                             </div>
-                                        )}
-                                        {room.status === "maintenance" && (
-                                            <div className="text-sm text-muted-foreground mb-3">
-                                                Under maintenance
+                                            {room.amenities && room.amenities.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mb-3">
+                                                    {room.amenities.slice(0, 3).map((amenity, idx) => (
+                                                        <Badge key={idx} variant="outline" className="text-xs">
+                                                            {amenity}
+                                                        </Badge>
+                                                    ))}
+                                                    {room.amenities.length > 3 && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            +{room.amenities.length - 3} more
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <Button size="sm" variant="outline" className="flex-1">
+                                                    <Edit className="w-3 h-3 mr-1" />
+                                                    Edit
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="flex-1">
+                                                    <Eye className="w-3 h-3 mr-1" />
+                                                    View
+                                                </Button>
                                             </div>
-                                        )}
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="outline" className="flex-1">
-                                                <Edit className="w-3 h-3 mr-1" />
-                                                Edit
-                                            </Button>
-                                            <Button size="sm" variant="outline" className="flex-1">
-                                                <Eye className="w-3 h-3 mr-1" />
-                                                View
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Occupancy Summary */}
                         <Card className="mt-6">
@@ -678,19 +714,19 @@ export function HotelOwnerDashboard() {
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="text-center p-4 rounded-lg bg-green-50">
                                         <div className="text-2xl font-bold text-green-600">
-                                            {DUMMY_ROOMS.filter((r) => r.status === "available").length}
+                                            {roomsLoading ? "-" : rooms.filter((r) => r.status === "available").length}
                                         </div>
                                         <div className="text-sm text-muted-foreground">Available</div>
                                     </div>
                                     <div className="text-center p-4 rounded-lg bg-blue-50">
                                         <div className="text-2xl font-bold text-blue-600">
-                                            {DUMMY_ROOMS.filter((r) => r.status === "occupied").length}
+                                            {roomsLoading ? "-" : rooms.filter((r) => r.status === "occupied").length}
                                         </div>
                                         <div className="text-sm text-muted-foreground">Occupied</div>
                                     </div>
                                     <div className="text-center p-4 rounded-lg bg-red-50">
                                         <div className="text-2xl font-bold text-red-600">
-                                            {DUMMY_ROOMS.filter((r) => r.status === "maintenance").length}
+                                            {roomsLoading ? "-" : rooms.filter((r) => r.status === "maintenance").length}
                                         </div>
                                         <div className="text-sm text-muted-foreground">Maintenance</div>
                                     </div>

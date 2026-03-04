@@ -248,9 +248,55 @@ const completeOnboarding = async (req, res) => {
   }
 }
 
+// @desc    Get hotel owner's rooms
+// @route   GET /api/owner/rooms
+// @access  Private
+const getOwnerRooms = async (req, res) => {
+  try {
+    const owner = await HotelOwner.findById(req.ownerId).select("rooms hotelName")
+
+    if (!owner) {
+      return res.status(404).json({
+        success: false,
+        message: "Owner not found",
+      })
+    }
+
+    // Transform rooms to include status based on bookings
+    const rooms = owner.rooms.map((room, index) => ({
+      id: room._id?.toString() || `room-${index}`,
+      name: room.name,
+      description: room.description || "",
+      price: room.price,
+      maxGuests: room.maxGuests || 2,
+      beds: room.beds || "1 King Bed",
+      size: room.size || "30 sqm",
+      amenities: room.amenities || [],
+      status: "available", // Default status, can be enhanced with booking logic
+    }))
+
+    res.status(200).json({
+      success: true,
+      message: "Rooms retrieved successfully",
+      data: {
+        hotelName: owner.hotelName,
+        rooms,
+      },
+    })
+  } catch (error) {
+    console.error("Get rooms error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve rooms",
+      error: error.message,
+    })
+  }
+}
+
 module.exports = {
   registerOwner,
   loginOwner,
   getOwnerProfile,
   completeOnboarding,
+  getOwnerRooms,
 }
