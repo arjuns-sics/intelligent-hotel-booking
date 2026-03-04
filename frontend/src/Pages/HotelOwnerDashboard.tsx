@@ -162,6 +162,7 @@ export function HotelOwnerDashboard() {
     const [bookings, setBookings] = useState<Booking[]>(DUMMY_BOOKINGS)
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [activeTab, setActiveTab] = useState("overview")
 
     // Room dialog states
     const [addRoomOpen, setAddRoomOpen] = useState(false)
@@ -359,7 +360,7 @@ export function HotelOwnerDashboard() {
                 </div>
 
                 {/* Main Content Tabs */}
-                <Tabs defaultValue="overview" className="space-y-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="bookings">Bookings</TabsTrigger>
@@ -462,15 +463,16 @@ export function HotelOwnerDashboard() {
                             <CardContent>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {[
-                                        { icon: Plus, label: "Add Booking", color: "bg-blue-500" },
-                                        { icon: Edit, label: "Edit Rooms", color: "bg-green-500" },
-                                        { icon: Download, label: "Export Report", color: "bg-purple-500" },
-                                        { icon: Settings, label: "Settings", color: "bg-orange-500" },
+                                        { icon: Plus, label: "Add Booking", color: "bg-blue-500", onClick: () => {} },
+                                        { icon: Edit, label: "Edit Rooms", color: "bg-green-500", onClick: () => { setActiveTab("rooms"); setAddRoomOpen(true); } },
+                                        { icon: Download, label: "Export Report", color: "bg-purple-500", onClick: () => {} },
+                                        { icon: Settings, label: "Settings", color: "bg-orange-500", onClick: () => {} },
                                     ].map((action, index) => (
                                         <Button
                                             key={index}
                                             variant="outline"
-                                            className="h-auto py-4 flex flex-col gap-2"
+                                            className="h-auto py-4 flex flex-col gap-2 cursor-pointer"
+                                            onClick={action.onClick}
                                         >
                                             <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
                                                 <action.icon className="w-5 h-5 text-white" />
