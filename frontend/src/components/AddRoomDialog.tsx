@@ -104,15 +104,16 @@ export function AddRoomDialog({ open, onOpenChange }: AddRoomDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent size="lg">
-        <DialogHeader>
+      <DialogContent size="xl" className="max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add New Room</DialogTitle>
           <DialogDescription>
             Add a new room to your hotel inventory
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="flex-1 overflow-y-auto px-1 py-2">
+          <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Room Name *</Label>
@@ -242,8 +243,9 @@ export function AddRoomDialog({ open, onOpenChange }: AddRoomDialogProps) {
             </div>
           </div>
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-4 border-t">
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
