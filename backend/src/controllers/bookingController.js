@@ -1,5 +1,7 @@
 const Booking = require("../models/Booking")
 const HotelOwner = require("../models/HotelOwner")
+const Review = require("../models/Review")
+const { logActivity } = require("../middleware/activityLogger")
 
 /**
  * @desc    Create a new booking
@@ -96,6 +98,23 @@ const createBooking = async (req, res) => {
 
     // Populate user details
     const populatedBooking = await Booking.findById(booking._id).populate("user", "name email")
+
+    // Log activity
+    await logActivity({
+      action: 'booking_created',
+      description: `New booking created for ${hotel.hotelName} by ${req.user?.name || 'Guest'}`,
+      entityType: 'booking',
+      entityId: booking._id,
+      metadata: {
+        bookingId: booking.bookingId,
+        hotelName: hotel.hotelName,
+        checkIn,
+        checkOut,
+        totalAmount,
+      },
+      user: req.user,
+      owner: { _id: hotel._id },
+    })
 
     res.status(201).json({
       success: true,
@@ -426,6 +445,28 @@ const updateBookingStatus = async (req, res) => {
     booking.status = status
     await booking.save()
 
+    // Log activity based on status
+    const actionMap = {
+      'confirmed': 'booking_confirmed',
+      'cancelled': 'booking_cancelled',
+      'checked-in': 'booking_checked_in',
+      'checked-out': 'booking_checked_out',
+    }
+
+    await logActivity({
+      action: actionMap[status] || 'booking_updated',
+      description: `Booking ${booking.bookingId} status changed to ${status}`,
+      entityType: 'booking',
+      entityId: booking._id,
+      metadata: {
+        bookingId: booking.bookingId,
+        previousStatus: booking._doc?.status || 'unknown',
+        newStatus: status,
+        guestName: booking.user?.name,
+      },
+      owner: { _id: owner._id },
+    })
+
     res.status(200).json({
       success: true,
       message: "Booking status updated successfully",
@@ -466,6 +507,15 @@ const getBookingStats = async (req, res) => {
     // Get all bookings for this hotel
     const bookings = await Booking.find({ hotel: hotelId })
 
+    // Get review statistics
+    const reviewStats = await Review.aggregate([
+      { $match: { hotel: owner._id } },
+      { $group: { _id: null, avgRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+    ])
+
+    const avgRating = reviewStats.length > 0 ? reviewStats[0].avgRating : 0
+    const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0
+
     // Calculate statistics
     const stats = {
       total: bookings.length,
@@ -480,6 +530,8 @@ const getBookingStats = async (req, res) => {
       upcomingRevenue: bookings
         .filter(b => b.status === "confirmed" || b.status === "pending")
         .reduce((sum, b) => sum + b.totalAmount, 0),
+      averageRating: parseFloat(avgRating.toFixed(1)),
+      totalReviews: totalReviews,
     }
 
     res.status(200).json({

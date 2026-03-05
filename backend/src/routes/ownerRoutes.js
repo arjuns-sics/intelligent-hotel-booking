@@ -6,13 +6,16 @@ const {
   getOwnerProfile,
   completeOnboarding,
 } = require("../controllers/ownerAuthController")
-const { 
-  getHotelBookings, 
-  updateBookingStatus, 
-  getBookingStats 
+const {
+  getHotelBookings,
+  updateBookingStatus,
+  getBookingStats
 } = require("../controllers/bookingController")
+const { getOwnerReviews } = require("../controllers/reviewController")
 const { protectOwner } = require("../middleware/auth")
 const roomRoutes = require("./rooms")
+const activityRoutes = require("./activities")
+const exportRoutes = require("./export")
 
 /**
  * @swagger
@@ -192,5 +195,27 @@ router.get("/bookings/stats", protectOwner, getBookingStats)
  *         description: Booking not found
  */
 router.patch("/bookings/:id/status", protectOwner, updateBookingStatus)
+
+/**
+ * @swagger
+ * /owner/reviews:
+ *   get:
+ *     summary: Get all reviews for hotel owner's hotel
+ *     tags: [Hotel Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Reviews retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/reviews", protectOwner, getOwnerReviews)
+
+// Activity logging routes
+router.use("/activities", activityRoutes)
+
+// Export routes
+router.use("/export", exportRoutes)
 
 module.exports = router

@@ -258,6 +258,59 @@ export const reviewApi = {
     const response = await api.delete(`/reviews/${reviewId}`)
     return response.data
   },
+
+  getOwnerReviews: async () => {
+    const response = await api.get("/owner/reviews")
+    return response.data
+  },
+}
+
+export const activityApi = {
+  getActivities: async (limit?: number, offset?: number, action?: string, entityType?: string) => {
+    const params: Record<string, string> = {}
+    if (limit) params.limit = limit.toString()
+    if (offset) params.offset = offset.toString()
+    if (action) params.action = action
+    if (entityType) params.entityType = entityType
+    const response = await api.get("/owner/activities", { params })
+    return response.data
+  },
+
+  getActivityStats: async (startDate?: string, endDate?: string) => {
+    const params: Record<string, string> = {}
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    const response = await api.get("/owner/activities/stats", { params })
+    return response.data
+  },
+}
+
+export const exportApi = {
+  downloadBookingsCSV: (status?: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams()
+    if (status) params.append('status', status)
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+    window.open(`${API_BASE_URL}${API_PREFIX}/owner/export/bookings/csv?${params.toString()}`, '_blank')
+  },
+
+  downloadReviewsCSV: () => {
+    window.open(`${API_BASE_URL}${API_PREFIX}/owner/export/reviews/csv`, '_blank')
+  },
+
+  downloadActivitiesCSV: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams()
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+    window.open(`${API_BASE_URL}${API_PREFIX}/owner/export/activities/csv?${params.toString()}`, '_blank')
+  },
+
+  downloadReportCSV: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams()
+    if (startDate) params.append('startDate', startDate)
+    if (endDate) params.append('endDate', endDate)
+    window.open(`${API_BASE_URL}${API_PREFIX}/owner/export/report/csv?${params.toString()}`, '_blank')
+  },
 }
 
 export default api

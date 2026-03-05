@@ -2,6 +2,7 @@ const mongoose = require("mongoose")
 const Review = require("../models/Review")
 const Booking = require("../models/Booking")
 const HotelOwner = require("../models/HotelOwner")
+const { logActivity } = require("../middleware/activityLogger")
 
 /**
  * @desc    Create a new review
@@ -94,6 +95,21 @@ const createReview = async (req, res) => {
 
     // Populate user details
     const populatedReview = await Review.findById(review._id).populate("user", "name email")
+
+    // Log activity
+    await logActivity({
+      action: 'review_created',
+      description: `New ${review.rating}-star review for ${review.hotelName} by ${req.user?.name || 'Guest'}`,
+      entityType: 'review',
+      entityId: review._id,
+      metadata: {
+        reviewId: populatedReview.reviewId,
+        hotelName: review.hotelName,
+        rating: review.rating,
+      },
+      user: req.user,
+      owner: { _id: review.hotel },
+    })
 
     res.status(201).json({
       success: true,
@@ -246,6 +262,20 @@ const deleteReview = async (req, res) => {
 
     await review.deleteOne()
 
+    // Log activity
+    await logActivity({
+      action: 'review_deleted',
+      description: `Review deleted for ${review.hotelName}`,
+      entityType: 'review',
+      entityId: review._id,
+      metadata: {
+        reviewId: review.reviewId,
+        hotelName: review.hotelName,
+      },
+      user: req.user,
+      owner: { _id: review.hotel },
+    })
+
     res.status(200).json({
       success: true,
       message: "Review deleted successfully",
@@ -307,10 +337,70 @@ const getReviewStats = async (req, res) => {
   }
 }
 
+/**
+ * @desc    Get reviews for hotel owner's hotel
+ * @route   GET /api/owner/reviews
+ * @access  Private (Hotel Owner)
+ */
+const getOwnerReviews = async (req, res) => {
+  try {
+    // Get owner's hotel ID
+    const owner = await HotelOwner.findById(req.ownerId)
+    if (!owner || !owner.onboardingComplete) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found or onboarding incomplete",
+      })
+    }
+
+    const hotelId = owner._id.toString()
+
+    // Convert to ObjectId for proper matching
+    const hotelObjectId = new mongoose.Types.ObjectId(hotelId)
+
+    const reviews = await Review.find({ hotel: hotelObjectId })
+      .sort({ createdAt: -1 })
+      .populate("user", "name email")
+
+    // Transform reviews
+    const transformedReviews = reviews.map((review) => ({
+      id: review._id,
+      reviewId: review.reviewId,
+      hotelId: review.hotel.toString(),
+      hotelName: review.hotelName,
+      rating: review.rating,
+      comment: review.comment,
+      images: review.images,
+      date: review.createdAt,
+      user: {
+        name: review.user?.name,
+        email: review.user?.email,
+      },
+    }))
+
+    res.status(200).json({
+      success: true,
+      message: "Hotel reviews retrieved successfully",
+      data: {
+        reviews: transformedReviews,
+        count: transformedReviews.length,
+      },
+    })
+  } catch (error) {
+    console.error("Get owner reviews error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve hotel reviews",
+      error: error.message,
+    })
+  }
+}
+
 module.exports = {
   createReview,
   getUserReviews,
   getHotelReviews,
   deleteReview,
   getReviewStats,
+  getOwnerReviews,
 }

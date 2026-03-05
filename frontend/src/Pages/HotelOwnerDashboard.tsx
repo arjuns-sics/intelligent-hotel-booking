@@ -22,7 +22,6 @@ import {
     Plus,
     LogOut,
     User,
-    Settings,
     Home,
     Star,
     Eye,
@@ -31,7 +30,7 @@ import {
     Trash2,
     Loader2,
 } from "lucide-react"
-import { type Room, bookingApi } from "@/lib/api"
+import { type Room, bookingApi, reviewApi, activityApi, exportApi } from "@/lib/api"
 import { useRooms } from "@/hooks/useRooms"
 import { AddRoomDialog } from "@/components/AddRoomDialog"
 import { EditRoomDialog } from "@/components/EditRoomDialog"
@@ -210,8 +209,42 @@ export function HotelOwnerDashboard() {
         retry: false,
     })
 
+    // Fetch hotel reviews
+    const { data: reviewsData, refetch: refetchReviews } = useQuery({
+        queryKey: ['owner-reviews-dashboard'],
+        queryFn: async () => {
+            const response = await reviewApi.getOwnerReviews()
+            return response.data
+        },
+        retry: false,
+        onSuccess: () => {
+            // Invalidate stats query to get updated review count
+            queryClient.invalidateQueries({ queryKey: ['owner-booking-stats-dashboard'] })
+        },
+    })
+
+    // Fetch recent activities
+    const { data: activitiesData } = useQuery({
+        queryKey: ['owner-activities-dashboard'],
+        queryFn: async () => {
+            const response = await activityApi.getActivities(20, 0)
+            return response.data
+        },
+        retry: false,
+    })
+
     const bookings = bookingsData?.bookings || []
     const stats = statsData?.data || {}
+    const reviews = reviewsData?.reviews || []
+    const activities = activitiesData?.data?.activities || []
+    
+    // Calculate review stats from actual reviews as fallback
+    const reviewStats = {
+        averageRating: reviews.length > 0 
+            ? (reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)
+            : '0',
+        totalReviews: reviews.length,
+    }
 
     // Update booking status mutation
     const updateStatusMutation = useMutation({
@@ -295,8 +328,8 @@ export function HotelOwnerDashboard() {
         bookingsGrowth: 8.3,
         occupancyRate: stats.total ? Math.round(((stats.confirmed + stats.checkedIn) / stats.total) * 100) : 0,
         occupancyGrowth: 5.2,
-        averageRating: 4.8,
-        totalReviews: 324,
+        averageRating: stats.averageRating || 0,
+        totalReviews: stats.totalReviews || 0,
     }
 
     return (
@@ -317,10 +350,7 @@ export function HotelOwnerDashboard() {
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" className="relative">
-                                <Bell className="w-5 h-5" />
-                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                            </Button>
+                         
                             <Separator orientation="vertical" className="h-8" />
                             <Button variant="ghost" size="sm" onClick={() => navigate("/owner/bookings")}>
                                 <Calendar className="w-4 h-4 mr-2" />
@@ -402,11 +432,11 @@ export function HotelOwnerDashboard() {
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Average Rating</p>
                                     <p className="text-2xl font-bold flex items-center gap-2">
-                                        {stats.averageRating}
+                                        {reviewStats.averageRating}
                                         <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
                                     </p>
                                     <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground">
-                                        <span>{stats.totalReviews} total reviews</span>
+                                        <span>{reviewStats.totalReviews} total reviews</span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-yellow-100 flex items-center justify-center">
@@ -467,47 +497,66 @@ export function HotelOwnerDashboard() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        {[
-                                            {
-                                                icon: CheckCircle,
-                                                title: "New Booking Confirmed",
-                                                desc: "Priya Sharma booked Deluxe Sea View",
-                                                time: "2 hours ago",
-                                                color: "text-green-600",
-                                            },
-                                            {
-                                                icon: Star,
-                                                title: "New Review Received",
-                                                desc: "5-star rating from Rajesh Kumar",
-                                                time: "5 hours ago",
-                                                color: "text-yellow-600",
-                                            },
-                                            {
-                                                icon: Clock,
-                                                title: "Pending Approval",
-                                                desc: "Ananya Desai's booking request",
-                                                time: "1 day ago",
-                                                color: "text-orange-600",
-                                            },
-                                            {
-                                                icon: Users,
-                                                title: "Check-in Today",
-                                                desc: "3 guests arriving today",
-                                                time: "Today",
-                                                color: "text-blue-600",
-                                            },
-                                        ].map((activity, index) => (
-                                            <div key={index} className="flex items-start gap-3">
-                                                <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center`}>
-                                                    <activity.icon className={`w-4 h-4 ${activity.color}`} />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium">{activity.title}</p>
-                                                    <p className="text-xs text-muted-foreground">{activity.desc}</p>
-                                                </div>
-                                                <span className="text-xs text-muted-foreground">{activity.time}</span>
+                                        {activities.length === 0 ? (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm">No recent activity</p>
                                             </div>
-                                        ))}
+                                        ) : (
+                                            activities.slice(0, 5).map((activity: any, index: number) => {
+                                                const getActivityIcon = (action: string) => {
+                                                    const iconMap: Record<string, any> = {
+                                                        'booking_created': Calendar,
+                                                        'booking_confirmed': CheckCircle,
+                                                        'booking_cancelled': XCircle,
+                                                        'booking_checked_in': User,
+                                                        'booking_checked_out': LogOut,
+                                                        'review_created': Star,
+                                                        'review_deleted': Trash2,
+                                                    }
+                                                    return iconMap[action] || Clock
+                                                }
+                                                const getActivityColor = (action: string) => {
+                                                    const colorMap: Record<string, string> = {
+                                                        'booking_created': 'text-blue-600',
+                                                        'booking_confirmed': 'text-green-600',
+                                                        'booking_cancelled': 'text-red-600',
+                                                        'booking_checked_in': 'text-purple-600',
+                                                        'booking_checked_out': 'text-gray-600',
+                                                        'review_created': 'text-yellow-600',
+                                                        'review_deleted': 'text-orange-600',
+                                                    }
+                                                    return colorMap[action] || 'text-muted-foreground'
+                                                }
+                                                const getActivityDescription = (activity: any) => {
+                                                    const descriptions: Record<string, string> = {
+                                                        'booking_created': `New booking: ${activity.metadata?.hotelName || 'Hotel'}`,
+                                                        'booking_confirmed': `Booking confirmed for ${activity.metadata?.guestName || 'guest'}`,
+                                                        'booking_cancelled': 'Booking was cancelled',
+                                                        'booking_checked_in': 'Guest checked in',
+                                                        'booking_checked_out': 'Guest checked out',
+                                                        'review_created': `${activity.metadata?.rating || 'New'}-star review received`,
+                                                        'review_deleted': 'Review was deleted',
+                                                    }
+                                                    return descriptions[activity.action] || activity.description
+                                                }
+                                                const Icon = getActivityIcon(activity.action)
+                                                const color = getActivityColor(activity.action)
+                                                return (
+                                                    <div key={index} className="flex items-start gap-3">
+                                                        <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center`}>
+                                                            <Icon className={`w-4 h-4 ${color}`} />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-medium">{getActivityDescription(activity)}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {new Date(activity.date).toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -523,8 +572,8 @@ export function HotelOwnerDashboard() {
                                     {[
                                         { icon: Plus, label: "Add Booking", color: "bg-blue-500", onClick: () => {} },
                                         { icon: Edit, label: "Edit Rooms", color: "bg-green-500", onClick: () => { setActiveTab("rooms"); setAddRoomOpen(true); } },
-                                        { icon: Download, label: "Export Report", color: "bg-purple-500", onClick: () => {} },
-                                        { icon: Settings, label: "Settings", color: "bg-orange-500", onClick: () => {} },
+                                        { icon: Download, label: "Export Report", color: "bg-purple-500", onClick: () => exportApi.downloadReportCSV() },
+                                   
                                     ].map((action, index) => (
                                         <Button
                                             key={index}
@@ -652,6 +701,10 @@ export function HotelOwnerDashboard() {
                                             <option value="checked-out">Checked Out</option>
                                             <option value="cancelled">Cancelled</option>
                                         </select>
+                                        <Button size="sm" variant="outline" onClick={() => exportApi.downloadBookingsCSV(statusFilter !== 'all' ? statusFilter : undefined)}>
+                                            <Download className="w-4 h-4 mr-2" />
+                                            Export
+                                        </Button>
                                         <Button size="sm">
                                             <Filter className="w-4 h-4 mr-2" />
                                             Filter
@@ -965,7 +1018,7 @@ export function HotelOwnerDashboard() {
                                     See what guests are saying
                                 </p>
                             </div>
-                            <Button variant="outline">
+                            <Button variant="outline" onClick={() => exportApi.downloadReviewsCSV()}>
                                 <Download className="w-4 h-4 mr-2" />
                                 Export Reviews
                             </Button>
@@ -975,14 +1028,14 @@ export function HotelOwnerDashboard() {
                             <Card>
                                 <CardContent className="pt-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="text-4xl font-bold">{stats.averageRating}</div>
+                                        <div className="text-4xl font-bold">{reviewStats.averageRating}</div>
                                         <div>
                                             <div className="flex items-center gap-1 mb-1">
                                                 {[...Array(5)].map((_, i) => (
                                                     <Star
                                                         key={i}
                                                         className={`w-5 h-5 ${
-                                                            i < Math.floor(stats.averageRating)
+                                                            i < Math.floor(Number(reviewStats.averageRating) || 0)
                                                                 ? "fill-yellow-500 text-yellow-500"
                                                                 : "text-muted-foreground"
                                                         }`}
@@ -990,7 +1043,7 @@ export function HotelOwnerDashboard() {
                                                 ))}
                                             </div>
                                             <div className="text-sm text-muted-foreground">
-                                                Based on {stats.totalReviews} reviews
+                                                Based on {reviewStats.totalReviews} reviews
                                             </div>
                                         </div>
                                     </div>
@@ -1000,8 +1053,9 @@ export function HotelOwnerDashboard() {
                                 <CardContent className="pt-6">
                                     <div className="space-y-2">
                                         {[5, 4, 3, 2, 1].map((rating) => {
-                                            const counts: Record<number, number> = { 5: 245, 4: 58, 3: 15, 2: 4, 1: 2 }
-                                            const percentage = (counts[rating] / stats.totalReviews) * 100
+                                            const count = reviews.filter((r: any) => r.rating === rating).length
+                                            const total = reviewStats.totalReviews || 1
+                                            const percentage = total > 0 ? (count / total) * 100 : 0
                                             return (
                                                 <div key={rating} className="flex items-center gap-2">
                                                     <div className="w-8 text-sm">{rating}</div>
@@ -1013,7 +1067,7 @@ export function HotelOwnerDashboard() {
                                                         />
                                                     </div>
                                                     <div className="w-12 text-sm text-right text-muted-foreground">
-                                                        {counts[rating]}
+                                                        {count}
                                                     </div>
                                                 </div>
                                             )
@@ -1024,46 +1078,66 @@ export function HotelOwnerDashboard() {
                         </div>
 
                         <div className="space-y-4">
-                            {DUMMY_REVIEWS.map((review) => (
-                                <Card key={review.id}>
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                                    <User className="w-5 h-5 text-primary" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium">{review.guestName}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {review.roomType} • {new Date(review.date).toLocaleDateString()}
+                            {reviews.length === 0 ? (
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <Star className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                    <p>No reviews yet</p>
+                                    <p className="text-sm">Reviews will appear here once guests start leaving feedback</p>
+                                </div>
+                            ) : (
+                                reviews.map((review: any) => (
+                                    <Card key={review.id}>
+                                        <CardContent className="pt-6">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <User className="w-5 h-5 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium">{review.user?.name || 'Anonymous'}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {new Date(review.date).toLocaleDateString()}
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="flex items-center gap-1">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            className={`w-4 h-4 ${
+                                                                i < review.rating
+                                                                    ? "fill-yellow-500 text-yellow-500"
+                                                                    : "text-muted-foreground"
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                {[...Array(5)].map((_, i) => (
-                                                    <Star
-                                                        key={i}
-                                                        className={`w-4 h-4 ${
-                                                            i < review.rating
-                                                                ? "fill-yellow-500 text-yellow-500"
-                                                                : "text-muted-foreground"
-                                                        }`}
-                                                    />
-                                                ))}
+                                            <p className="text-muted-foreground">{review.comment}</p>
+                                            {review.images && review.images.length > 0 && (
+                                                <div className="flex gap-2 mt-4">
+                                                    {review.images.map((img: string, idx: number) => (
+                                                        <img
+                                                            key={idx}
+                                                            src={img}
+                                                            alt={`Review image ${idx + 1}`}
+                                                            className="w-20 h-20 object-cover rounded-lg"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2 mt-4">
+                                                <Button size="sm" variant="outline">
+                                                    Reply
+                                                </Button>
+                                                <Button size="sm" variant="ghost">
+                                                    Report
+                                                </Button>
                                             </div>
-                                        </div>
-                                        <p className="text-muted-foreground">{review.comment}</p>
-                                        <div className="flex gap-2 mt-4">
-                                            <Button size="sm" variant="outline">
-                                                Reply
-                                            </Button>
-                                            <Button size="sm" variant="ghost">
-                                                Report
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            )}
                         </div>
                     </TabsContent>
                 </Tabs>
