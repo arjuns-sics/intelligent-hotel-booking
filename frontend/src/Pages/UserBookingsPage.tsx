@@ -38,7 +38,7 @@ import {
     Image,
     Loader2,
 } from "lucide-react"
-import { bookingApi } from "@/lib/api"
+import { bookingApi, reviewApi } from "@/lib/api"
 import { toast } from "sonner"
 
 interface Booking {
@@ -140,28 +140,6 @@ const DUMMY_BOOKINGS: Booking[] = [
     },
 ]
 
-const DUMMY_REVIEWS: Review[] = [
-    {
-        id: "1",
-        bookingId: "BK002",
-        hotelName: "Ocean View Resort",
-        hotelId: "2",
-        rating: 5,
-        comment: "Amazing beachfront property! The staff was incredibly friendly and the food was delicious. The infinity pool overlooking the sea was the highlight of our stay.",
-        date: "2026-02-26",
-        images: ["https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80"],
-    },
-    {
-        id: "2",
-        bookingId: "BK004",
-        hotelName: "Royal Heritage Hotel",
-        hotelId: "4",
-        rating: 4,
-        comment: "Beautiful heritage property with stunning architecture. The cultural performances in the evening were mesmerizing. Room service could be faster though.",
-        date: "2026-01-19",
-    },
-]
-
 export function UserBookingsPage() {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
@@ -172,7 +150,9 @@ export function UserBookingsPage() {
     const [reviewForm, setReviewForm] = useState({
         rating: 5,
         comment: "",
+        images: [] as string[],
     })
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false)
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
     const [showDetailsDialog, setShowDetailsDialog] = useState(false)
 
@@ -188,8 +168,17 @@ export function UserBookingsPage() {
 
     const bookings = bookingsData?.bookings || []
 
-    // Use dummy reviews for now (can be implemented later)
-    const [reviews, setReviews] = useState<Review[]>(DUMMY_REVIEWS)
+    // Fetch reviews from API
+    const { data: reviewsData, refetch: refetchReviews } = useQuery({
+        queryKey: ['my-reviews'],
+        queryFn: async () => {
+            const response = await reviewApi.getUserReviews()
+            return response.data
+        },
+        retry: false,
+    })
+
+    const reviews: Review[] = reviewsData?.reviews || []
 
     // Mutation for cancelling booking
     const cancelBookingMutation = useMutation({
@@ -264,27 +253,133 @@ export function UserBookingsPage() {
         setShowReviewModal(true)
     }
 
+    const submitReviewMutation = useMutation({
+        mutationFn: async (data: { bookingId: string; hotelId: string; rating: number; comment: string; images: string[] }) => {
+            const response = await reviewApi.createReview(data)
+            return response.data
+        },
+        onSuccess: () => {
+            toast.success('Review submitted successfully!')
+            setShowReviewModal(false)
+            setReviewForm({ rating: 5, comment: "", images: [] })
+            setSelectedBookingForReview(null)
+            refetchReviews()
+        },
+        onError: (error: any) => {
+            toast.error('Failed to submit review', {
+                description: error.response?.data?.message || 'Please try again.',
+            })
+        },
+    })
+
     const handleSubmitReview = () => {
         if (!selectedBookingForReview || !reviewForm.comment.trim()) return
 
-        const newReview: Review = {
-            id: `review-${Date.now()}`,
+        submitReviewMutation.mutate({
             bookingId: selectedBookingForReview.id,
-            hotelName: selectedBookingForReview.hotelName,
             hotelId: selectedBookingForReview.hotelId,
             rating: reviewForm.rating,
             comment: reviewForm.comment,
-            date: new Date().toISOString().split("T")[0],
-        }
-
-        setReviews((prev) => [newReview, ...prev])
-        setShowReviewModal(false)
-        setReviewForm({ rating: 5, comment: "" })
-        setSelectedBookingForReview(null)
+            images: reviewForm.images,
+        })
     }
 
-    const handleDeleteReview = (reviewId: string) => {
-        setReviews((prev) => prev.filter((r) => r.id !== reviewId))
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files || files.length === 0) return
+
+        Array.from(files).forEach(file => {
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                toast.error('Invalid file type', {
+                    description: `${file.name} is not an image`,
+                })
+                return
+            }
+
+            console.log('Processing file:', file.name, 'size:', file.size, 'type:', file.type)
+
+            // Compress and convert to base64
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                console.log('File loaded, creating image...')
+                const imgElement = document.createElement('img')
+                imgElement.onload = () => {
+                    console.log('Image loaded, dimensions:', imgElement.width, 'x', imgElement.height)
+                    const canvas = document.createElement('canvas')
+                    let width = imgElement.width
+                    let height = imgElement.height
+
+                    // Resize if image is too large (max 1920px)
+                    const MAX_SIZE = 1920
+                    if (width > MAX_SIZE || height > MAX_SIZE) {
+                        const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height)
+                        width = Math.floor(width * ratio)
+                        height = Math.floor(height * ratio)
+                        console.log('Resized to:', width, 'x', height)
+                    }
+
+                    canvas.width = width
+                    canvas.height = height
+
+                    const ctx = canvas.getContext('2d')
+                    if (!ctx) {
+                        toast.error('Failed to process image', {
+                            description: 'Please try again with a different file',
+                        })
+                        return
+                    }
+
+                    ctx.drawImage(imgElement, 0, 0, width, height)
+
+                    // Compress with quality 0.7 (70%) for smaller file size
+                    const base64 = canvas.toDataURL(file.type, 0.7)
+                    console.log('Base64 generated, length:', base64.length)
+
+                    // Check compressed size (limit to 1MB after compression)
+                    // Calculate byte length without Buffer (browser-compatible)
+                    const sizeInBytes = new Blob([base64]).size
+                    console.log('Compressed size:', (sizeInBytes / (1024 * 1024)).toFixed(2), 'MB')
+                    
+                    if (sizeInBytes > 1 * 1024 * 1024) {
+                        toast.error('File too large even after compression', {
+                            description: `${file.name} is still larger than 1MB after compression`,
+                        })
+                        return
+                    }
+
+                    console.log('Adding image to form')
+                    setReviewForm((prev) => ({
+                        ...prev,
+                        images: [...prev.images, base64],
+                    }))
+                }
+                imgElement.onerror = () => {
+                    console.error('Failed to load image')
+                    toast.error('Failed to read image', {
+                        description: 'Please try again with a different file',
+                    })
+                }
+                imgElement.src = reader.result as string
+            }
+            reader.onerror = () => {
+                console.error('Failed to read file')
+                toast.error('Failed to read file', {
+                    description: 'Please try again with a different file',
+                })
+            }
+            reader.readAsDataURL(file)
+        })
+        
+        // Reset input value to allow selecting the same file again
+        e.target.value = ''
+    }
+
+    const handleRemoveImage = (index: number) => {
+        setReviewForm((prev) => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index),
+        }))
     }
 
     const filteredBookings = bookings.filter((booking) => {
@@ -319,6 +414,26 @@ export function UserBookingsPage() {
 
     const hasReviewed = (bookingId: string) => {
         return reviews.some((r) => r.bookingId === bookingId)
+    }
+
+    const deleteReviewMutation = useMutation({
+        mutationFn: async (reviewId: string) => {
+            const response = await reviewApi.deleteReview(reviewId)
+            return response.data
+        },
+        onSuccess: () => {
+            toast.success('Review deleted successfully')
+            refetchReviews()
+        },
+        onError: (error: any) => {
+            toast.error('Failed to delete review', {
+                description: error.response?.data?.message || 'Please try again.',
+            })
+        },
+    })
+
+    const handleDeleteReview = (reviewId: string) => {
+        deleteReviewMutation.mutate(reviewId)
     }
 
     return (
@@ -409,10 +524,8 @@ export function UserBookingsPage() {
 
                 {/* Main Content Tabs */}
                 <Tabs defaultValue="bookings" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+                    <TabsList className="grid w-full grid-cols-1 lg:w-auto lg:inline-grid">
                         <TabsTrigger value="bookings">My Bookings</TabsTrigger>
-                        <TabsTrigger value="reviews">My Reviews</TabsTrigger>
-                        <TabsTrigger value="write-review">Write Review</TabsTrigger>
                     </TabsList>
 
                     {/* Bookings Tab */}
@@ -600,157 +713,6 @@ export function UserBookingsPage() {
                             </CardContent>
                         </Card>
                     </TabsContent>
-
-                    {/* Reviews Tab */}
-                    <TabsContent value="reviews" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base">My Reviews</CardTitle>
-                                <CardDescription>Reviews you've written for completed stays</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {reviews.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {reviews.map((review) => (
-                                            <div key={review.id} className="border rounded-lg p-4">
-                                                <div className="flex gap-4">
-                                                    <div className="shrink-0">
-                                                        <div
-                                                            className="w-20 h-20 rounded-lg overflow-hidden cursor-pointer"
-                                                            onClick={() => navigate(`/hotel/${review.hotelId}`)}
-                                                        >
-                                                            <img
-                                                                src={DUMMY_BOOKINGS.find((b) => b.id === review.bookingId)?.hotelImage}
-                                                                alt={review.hotelName}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-start justify-between mb-2">
-                                                            <div>
-                                                                <h3
-                                                                    className="font-semibold cursor-pointer hover:text-primary transition-colors"
-                                                                    onClick={() => navigate(`/hotel/${review.hotelId}`)}
-                                                                >
-                                                                    {review.hotelName}
-                                                                </h3>
-                                                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                                    <Calendar className="w-3 h-3" />
-                                                                    Reviewed on {formatDate(review.date)}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex items-center gap-1">
-                                                                    {[...Array(5)].map((_, i) => (
-                                                                        <Star
-                                                                            key={i}
-                                                                            className={`w-4 h-4 ${
-                                                                                i < review.rating
-                                                                                    ? "fill-yellow-500 text-yellow-500"
-                                                                                    : "text-muted-foreground"
-                                                                            }`}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleDeleteReview(review.id)}
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-muted-foreground text-sm">{review.comment}</p>
-                                                        {review.images && review.images.length > 0 && (
-                                                            <div className="flex gap-2 mt-3">
-                                                                {review.images.map((img, i) => (
-                                                                    <img
-                                                                        key={i}
-                                                                        src={img}
-                                                                        alt="Review"
-                                                                        className="w-16 h-16 rounded object-cover"
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                                        <h3 className="text-lg font-semibold mb-2">No reviews yet</h3>
-                                        <p className="text-muted-foreground mb-6">
-                                            Share your experiences from completed stays
-                                        </p>
-                                        <Button onClick={() => navigate("/bookings?tab=write-review")}>
-                                            <Plus className="w-4 h-4 mr-2" />
-                                            Write Your First Review
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-
-                    {/* Write Review Tab */}
-                    <TabsContent value="write-review" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base">Write a Review</CardTitle>
-                                <CardDescription>Share your experience with other travelers</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {bookings.filter((b) => b.status === "completed" && !hasReviewed(b.id)).length > 0 ? (
-                                    <div className="space-y-4">
-                                        <p className="text-sm text-muted-foreground">
-                                            Select a completed stay to write a review:
-                                        </p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {bookings
-                                                .filter((b) => b.status === "completed" && !hasReviewed(b.id))
-                                                .map((booking) => (
-                                                    <div
-                                                        key={booking.id}
-                                                        className="border rounded-lg p-4 cursor-pointer hover:border-primary transition-colors"
-                                                        onClick={() => handleWriteReview(booking)}
-                                                    >
-                                                        <div className="flex gap-3">
-                                                            <img
-                                                                src={booking.hotelImage}
-                                                                alt={booking.hotelName}
-                                                                className="w-16 h-16 rounded object-cover shrink-0"
-                                                            />
-                                                            <div className="flex-1 min-w-0">
-                                                                <h4 className="font-medium truncate">{booking.hotelName}</h4>
-                                                                <p className="text-sm text-muted-foreground truncate">
-                                                                    {booking.roomType}
-                                                                </p>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Stayed: {formatDate(booking.checkIn)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <AlertCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                                        <h3 className="text-lg font-semibold mb-2">No eligible stays</h3>
-                                        <p className="text-muted-foreground">
-                                            You can write reviews for completed hotel stays
-                                        </p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
                 </Tabs>
             </div>
 
@@ -824,14 +786,46 @@ export function UserBookingsPage() {
 
                                 <div>
                                     <Label>Add Photos (Optional)</Label>
-                                    <div className="border-2 border-dashed border-input rounded-lg p-6 text-center mt-2">
-                                        <Image className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                                        <p className="text-sm text-muted-foreground">
-                                            Click to upload or drag and drop
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            PNG, JPG up to 5MB
-                                        </p>
+                                    <div className="mt-2 space-y-4">
+                                        {/* Image Preview */}
+                                        {reviewForm.images.length > 0 && (
+                                            <div key={`images-${reviewForm.images.length}`} className="flex gap-2 flex-wrap">
+                                                {reviewForm.images.map((img, index) => (
+                                                    <div key={`${index}-${img.slice(0, 50)}`} className="relative group">
+                                                        <img
+                                                            src={img}
+                                                            alt={`Upload ${index + 1}`}
+                                                            className="w-20 h-20 rounded-lg object-cover"
+                                                        />
+                                                        <button
+                                                            onClick={() => handleRemoveImage(index)}
+                                                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                                                            type="button"
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Upload Area */}
+                                        <label className="border-2 border-dashed border-input rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleImageUpload}
+                                                className="hidden"
+                                            />
+                                            <Image className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                                            <p className="text-sm text-muted-foreground">
+                                                Click to upload or drag and drop
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                PNG, JPG up to 5MB (auto-compressed to 1MB)
+                                            </p>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -847,10 +841,19 @@ export function UserBookingsPage() {
                                 <Button
                                     className="flex-1"
                                     onClick={handleSubmitReview}
-                                    disabled={!reviewForm.comment.trim()}
+                                    disabled={!reviewForm.comment.trim() || submitReviewMutation.isPending}
                                 >
-                                    <Send className="w-4 h-4 mr-2" />
-                                    Submit Review
+                                    {submitReviewMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-4 h-4 mr-2" />
+                                            Submit Review
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>

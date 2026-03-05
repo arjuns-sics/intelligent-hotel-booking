@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   MapPin,
   Star,
@@ -25,9 +27,25 @@ import {
   Share2,
   Loader2,
   AlertCircle,
+  ThumbsUp,
 } from "lucide-react"
-import { api, bookingApi } from "@/lib/api"
+import { api, bookingApi, reviewApi } from "@/lib/api"
 import { toast } from "sonner"
+
+interface Review {
+  id: string
+  reviewId: string
+  bookingId: string
+  hotelId: string
+  hotelName: string
+  rating: number
+  comment: string
+  images?: string[]
+  date: string
+  user?: {
+    name: string
+  }
+}
 
 const AMENITY_ICONS: Record<string, React.ElementType> = {
   wifi: Wifi,
@@ -115,6 +133,34 @@ export function HotelDetails() {
   })
 
   const hotel = hotelData
+
+  // Fetch hotel reviews
+  const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
+    queryKey: ['hotel-reviews', id],
+    queryFn: async () => {
+      const response = await reviewApi.getHotelReviews(id || '', 50, 0)
+      console.log('Reviews API response:', response.data)
+      return response.data
+    },
+    enabled: !!id,
+    retry: false,
+  })
+
+  // Fetch review statistics
+  const { data: reviewStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['review-stats', id],
+    queryFn: async () => {
+      const response = await reviewApi.getReviewStats(id || '')
+      console.log('Stats API response:', response.data)
+      return response.data
+    },
+    enabled: !!id,
+    retry: false,
+  })
+
+  const reviews: Review[] = reviewsData?.reviews || []
+  // reviewStats might have data nested or flat depending on API response
+  const stats = reviewStats?.data || reviewStats || { totalReviews: 0, averageRating: 0, ratingDistribution: {} }
 
   // Mutation for creating booking
   const createBookingMutation = useMutation({
@@ -243,6 +289,21 @@ export function HotelDetails() {
     return parts.join(', ') || hotel.location
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  const getUserInitials = (name?: string) => {
+    if (!name) return 'U'
+    const parts = name.split(' ')
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+  }
+
   // Calculate minimum price for available rooms
   const minPrice = useMemo(() => {
     if (availableRooms.length === 0) return hotel.price
@@ -353,8 +414,12 @@ export function HotelDetails() {
                 <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg">
                   <Star className="w-5 h-5 fill-primary text-primary" />
                   <div>
-                    <span className="font-semibold">{hotel.rating}</span>
-                    <span className="text-muted-foreground text-sm"> ({hotel.reviews} reviews)</span>
+                    <span className="font-semibold">
+                      {typeof stats.averageRating === 'string' 
+                        ? stats.averageRating 
+                        : (stats.averageRating || hotel.rating)?.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground text-sm"> ({stats.totalReviews || hotel.reviews} reviews)</span>
                   </div>
                 </div>
               </div>
@@ -507,6 +572,124 @@ export function HotelDetails() {
                     Check-out: {hotel.checkOutTime}
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Guest Reviews */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Guest Reviews</CardTitle>
+                    <CardDescription>
+                      {stats.totalReviews} {stats.totalReviews === 1 ? 'review' : 'reviews'} from verified guests
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg">
+                    <Star className="w-6 h-6 fill-primary text-primary" />
+                    <div>
+                      <span className="text-2xl font-bold">
+                        {typeof stats.averageRating === 'string' 
+                          ? stats.averageRating 
+                          : (stats.averageRating || '0')}
+                      </span>
+                      <span className="text-muted-foreground text-sm"> /5</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Rating Distribution */}
+                {stats.totalReviews > 0 && (
+                  <div className="space-y-2">
+                    {[5, 4, 3, 2, 1].map((rating) => {
+                      const count = stats.ratingDistribution[rating as keyof typeof stats.ratingDistribution] || 0
+                      const percentage = stats.totalReviews > 0 ? (count / stats.totalReviews) * 100 : 0
+                      return (
+                        <div key={rating} className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 w-16">
+                            <span className="text-sm font-medium">{rating}</span>
+                            <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                          </div>
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-muted-foreground w-8 text-right">{count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Reviews List */}
+                <Separator />
+
+                {reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {getUserInitials(review.user?.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{review.user?.name || 'Anonymous'}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(review.date)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < review.rating
+                                    ? 'fill-yellow-500 text-yellow-500'
+                                    : 'text-muted-foreground'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <p className="text-muted-foreground text-sm">{review.comment}</p>
+
+                        {/* Review Images */}
+                        {review.images && review.images.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {review.images.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={img}
+                                alt={`Review image ${idx + 1}`}
+                                className="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => window.open(img, '_blank')}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Verified stay
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <ThumbsUp className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground font-medium">No reviews yet</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Be the first to review this hotel
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -1,4 +1,5 @@
 const HotelOwner = require("../models/HotelOwner")
+const Review = require("../models/Review")
 
 /**
  * @desc    Get all hotels (public endpoint)
@@ -26,8 +27,8 @@ const getAllHotels = async (req, res) => {
       hotelName: { $exists: true, $ne: "" },
     }).select('name hotelName hotelDescription address city state pincode amenities rooms rating')
 
-    // Transform owners to hotels format
-    let hotels = owners.map((owner) => {
+    // Transform owners to hotels format with review stats
+    const hotelsWithStats = await Promise.all(owners.map(async (owner) => {
       // Calculate minimum room price for filtering (shows starting price)
       const minPrice = owner.rooms && owner.rooms.length > 0
         ? Math.min(...owner.rooms.map(r => r.price || 0))
@@ -42,13 +43,14 @@ const getAllHotels = async (req, res) => {
       if (owner.state) locationParts.push(owner.state)
       const locationString = locationParts.join(', ') || owner.address || 'India'
 
-      // Generate a deterministic rating based on hotel name (for demo purposes)
-      // In production, this would be actual reviews
-      const nameHash = owner.hotelName?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0
-      const generatedRating = 4 + (nameHash % 10) / 10 // Rating between 4.0 and 4.9
+      // Get real review stats from database
+      const reviewStats = await Review.aggregate([
+        { $match: { hotel: owner._id } },
+        { $group: { _id: null, avgRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+      ])
 
-      // Generate random review count (deterministic based on hotel name)
-      const reviewCount = 100 + (nameHash % 500)
+      const avgRating = reviewStats.length > 0 ? reviewStats[0].avgRating : 0
+      const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0
 
       // Map amenities to feature IDs
       const featureMap = {
@@ -79,8 +81,8 @@ const getAllHotels = async (req, res) => {
         name: owner.hotelName || 'Hotel',
         location: locationString,
         price: minPrice,
-        rating: generatedRating,
-        reviews: reviewCount,
+        rating: avgRating.toFixed(1),
+        reviews: totalReviews,
         image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`, // Placeholder image
         features: features.length > 0 ? features : ['wifi', 'restaurant'],
         availableRooms,
@@ -100,7 +102,9 @@ const getAllHotels = async (req, res) => {
           floor: room.floor || '',
         })),
       }
-    })
+    }))
+
+    let hotels = hotelsWithStats
 
     // Apply filters
     if (location) {
@@ -195,10 +199,14 @@ const getHotelById = async (req, res) => {
     if (owner.state) locationParts.push(owner.state)
     const locationString = locationParts.join(', ') || owner.address || 'India'
 
-    // Generate rating and reviews
-    const nameHash = owner.hotelName?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0
-    const generatedRating = 4 + (nameHash % 10) / 10
-    const reviewCount = 100 + (nameHash % 500)
+    // Get real review stats from database
+    const reviewStats = await Review.aggregate([
+      { $match: { hotel: owner._id } },
+      { $group: { _id: null, avgRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+    ])
+
+    const avgRating = reviewStats.length > 0 ? reviewStats[0].avgRating : 0
+    const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0
 
     // Map amenities
     const featureMap = {
@@ -228,8 +236,8 @@ const getHotelById = async (req, res) => {
       name: owner.hotelName || 'Hotel',
       location: locationString,
       price: minPrice,
-      rating: generatedRating,
-      reviews: reviewCount,
+      rating: avgRating.toFixed(1),
+      reviews: totalReviews,
       image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
       features: features.length > 0 ? features : ['wifi', 'restaurant'],
       availableRooms,

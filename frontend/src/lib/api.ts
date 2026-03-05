@@ -120,6 +120,29 @@ export interface CreateBookingData {
   specialRequests?: string
 }
 
+export interface Review {
+  id: string
+  reviewId: string
+  bookingId: string
+  hotelId: string
+  hotelName: string
+  rating: number
+  comment: string
+  images?: string[]
+  date: string
+  user?: {
+    name: string
+  }
+}
+
+export interface CreateReviewData {
+  bookingId: string
+  hotelId: string
+  rating: number
+  comment: string
+  images?: string[]
+}
+
 export const ownerApi = {
   register: async (data: {
     name: string
@@ -203,6 +226,36 @@ export const bookingApi = {
 
   updateBookingStatus: async (bookingId: string, status: string) => {
     const response = await api.patch(`/owner/bookings/${bookingId}/status`, { status })
+    return response.data
+  },
+}
+
+export const reviewApi = {
+  createReview: async (data: CreateReviewData) => {
+    const response = await api.post("/reviews", data)
+    return response.data
+  },
+
+  getUserReviews: async () => {
+    const response = await api.get("/reviews/my-reviews")
+    return response.data
+  },
+
+  getHotelReviews: async (hotelId: string, limit?: number, offset?: number) => {
+    const params: Record<string, string> = {}
+    if (limit) params.limit = limit.toString()
+    if (offset) params.offset = offset.toString()
+    const response = await api.get(`/reviews/hotel/${hotelId}`, { params })
+    return response.data
+  },
+
+  getReviewStats: async (hotelId: string) => {
+    const response = await api.get(`/reviews/hotel/${hotelId}/stats`)
+    return response.data
+  },
+
+  deleteReview: async (reviewId: string) => {
+    const response = await api.delete(`/reviews/${reviewId}`)
     return response.data
   },
 }

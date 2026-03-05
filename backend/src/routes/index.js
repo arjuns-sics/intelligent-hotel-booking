@@ -6,6 +6,7 @@ const authRoutes = require("./auth")
 const ownerRoutes = require("./ownerRoutes")
 const hotelRoutes = require("./hotels")
 const bookingRoutes = require("./bookings")
+const reviewRoutes = require("./reviews")
 
 router.get("/", (req, res) => {
   res.json({ message: "API is running" })
@@ -22,5 +23,8 @@ router.use("/hotels", hotelRoutes)
 
 // User booking routes (protected)
 router.use("/bookings", bookingRoutes)
+
+// Review routes
+router.use("/reviews", reviewRoutes)
 
 module.exports = router
