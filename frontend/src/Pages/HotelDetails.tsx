@@ -415,9 +415,9 @@ export function HotelDetails() {
                   <Star className="w-5 h-5 fill-primary text-primary" />
                   <div>
                     <span className="font-semibold">
-                      {typeof stats.averageRating === 'string' 
-                        ? stats.averageRating 
-                        : (stats.averageRating || hotel.rating)?.toFixed(1)}
+                      {typeof stats.averageRating === 'string'
+                        ? stats.averageRating
+                        : ((stats.averageRating ?? hotel.rating) || 0).toFixed(1)}
                     </span>
                     <span className="text-muted-foreground text-sm"> ({stats.totalReviews || hotel.reviews} reviews)</span>
                   </div>
