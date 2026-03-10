@@ -506,6 +506,19 @@ const getBookingStats = async (req, res) => {
 
     // Get all bookings for this hotel
     const bookings = await Booking.find({ hotel: hotelId })
+    
+    // Debug logging
+    console.log(`[getBookingStats] Owner ID: ${hotelId}`)
+    console.log(`[getBookingStats] Total bookings found: ${bookings.length}`)
+    if (bookings.length > 0) {
+      console.log(`[getBookingStats] Sample booking:`, {
+        id: bookings[0]._id,
+        hotel: bookings[0].hotel.toString(),
+        totalAmount: bookings[0].totalAmount,
+        status: bookings[0].status,
+        createdAt: bookings[0].createdAt
+      })
+    }
 
     // Get review statistics
     const reviewStats = await Review.aggregate([
@@ -515,6 +528,59 @@ const getBookingStats = async (req, res) => {
 
     const avgRating = reviewStats.length > 0 ? reviewStats[0].avgRating : 0
     const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0
+
+    // Calculate current month dates
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+    
+    console.log(`[getBookingStats] Current month: ${currentMonthStart.toISOString()} to ${currentMonthEnd.toISOString()}`)
+    console.log(`[getBookingStats] Previous month: ${previousMonthStart.toISOString()} to ${previousMonthEnd.toISOString()}`)
+
+    // Filter bookings by period (using createdAt since bookingDate doesn't exist)
+    const currentMonthBookings = bookings.filter(b =>
+      b.createdAt >= currentMonthStart && b.createdAt <= currentMonthEnd
+    )
+    const previousMonthBookings = bookings.filter(b =>
+      b.createdAt >= previousMonthStart && b.createdAt <= previousMonthEnd
+    )
+    
+    console.log(`[getBookingStats] Current month bookings: ${currentMonthBookings.length}`)
+    console.log(`[getBookingStats] Previous month bookings: ${previousMonthBookings.length}`)
+
+    // Calculate revenues
+    const currentMonthRevenue = currentMonthBookings
+      .filter(b => b.status !== "cancelled")
+      .reduce((sum, b) => sum + b.totalAmount, 0)
+    const previousMonthRevenue = previousMonthBookings
+      .filter(b => b.status !== "cancelled")
+      .reduce((sum, b) => sum + b.totalAmount, 0)
+    
+    console.log(`[getBookingStats] Current month revenue: ${currentMonthRevenue}`)
+    console.log(`[getBookingStats] Previous month revenue: ${previousMonthRevenue}`)
+
+    // Calculate growth percentages
+    const revenueGrowth = previousMonthRevenue > 0
+      ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue * 100).toFixed(1)
+      : currentMonthRevenue > 0 ? "100" : "0"
+    
+    const bookingsGrowth = previousMonthBookings.length > 0
+      ? ((currentMonthBookings.length - previousMonthBookings.length) / previousMonthBookings.length * 100).toFixed(1)
+      : currentMonthBookings.length > 0 ? "100" : "0"
+
+    // Calculate occupancy rate (based on total rooms available)
+    const totalRooms = owner.rooms?.length || 1
+    const currentNight = new Date()
+    const tonightBookings = bookings.filter(b =>
+      b.status === "confirmed" || b.status === "checked-in"
+    ).filter(b => {
+      const checkIn = new Date(b.checkIn)
+      const checkOut = new Date(b.checkOut)
+      return currentNight >= checkIn && currentNight < checkOut
+    })
+    const occupancyRate = Math.min(100, Math.round((tonightBookings.length / totalRooms) * 100))
 
     // Calculate statistics
     const stats = {
@@ -530,9 +596,16 @@ const getBookingStats = async (req, res) => {
       upcomingRevenue: bookings
         .filter(b => b.status === "confirmed" || b.status === "pending")
         .reduce((sum, b) => sum + b.totalAmount, 0),
+      currentMonthRevenue,
+      previousMonthRevenue,
+      revenueGrowth: parseFloat(revenueGrowth),
+      bookingsGrowth: parseFloat(bookingsGrowth),
+      occupancyRate,
       averageRating: parseFloat(avgRating.toFixed(1)),
       totalReviews: totalReviews,
     }
+
+    console.log(`[getBookingStats] Full stats:`, stats)
 
     res.status(200).json({
       success: true,

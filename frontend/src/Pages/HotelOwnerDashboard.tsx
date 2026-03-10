@@ -200,7 +200,7 @@ export function HotelOwnerDashboard() {
     })
 
     // Fetch booking stats
-    const { data: statsData } = useQuery({
+    const { data: statsData, error: statsError } = useQuery({
         queryKey: ['owner-booking-stats-dashboard'],
         queryFn: async () => {
             const response = await bookingApi.getBookingStats()
@@ -208,6 +208,8 @@ export function HotelOwnerDashboard() {
         },
         retry: false,
     })
+
+    console.log('[Dashboard] statsError:', statsError)
 
     // Fetch hotel reviews
     const { data: reviewsData, refetch: refetchReviews } = useQuery({
@@ -234,10 +236,14 @@ export function HotelOwnerDashboard() {
     })
 
     const bookings = bookingsData?.bookings || []
-    const stats = statsData?.data || {}
+    const stats = statsData || {}  // Stats is already at the top level, not nested
     const reviews = reviewsData?.reviews || []
     const activities = activitiesData?.data?.activities || []
-    
+
+    // Debug logging
+    console.log('[Dashboard] statsData:', statsData)
+    console.log('[Dashboard] stats:', stats)
+
     // Calculate review stats from actual reviews as fallback
     const reviewStats = {
         averageRating: reviews.length > 0 
@@ -323,11 +329,10 @@ export function HotelOwnerDashboard() {
     // Calculate dynamic stats from API data
     const dashboardStats = {
         totalRevenue: stats.totalRevenue || 0,
-        revenueGrowth: 12.5, // Can be calculated from historical data
         totalBookings: stats.total || 0,
-        bookingsGrowth: 8.3,
-        occupancyRate: stats.total ? Math.round(((stats.confirmed + stats.checkedIn) / stats.total) * 100) : 0,
-        occupancyGrowth: 5.2,
+        occupancyRate: stats.occupancyRate || 0,
+        revenueGrowth: stats.revenueGrowth || 0,
+        bookingsGrowth: stats.bookingsGrowth || 0,
         averageRating: stats.averageRating || 0,
         totalReviews: stats.totalReviews || 0,
     }
@@ -378,9 +383,11 @@ export function HotelOwnerDashboard() {
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
                                     <p className="text-2xl font-bold">{formatCurrency(dashboardStats.totalRevenue)}</p>
-                                    <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                                        <TrendingUp className="w-4 h-4" />
-                                        <span>+{dashboardStats.revenueGrowth}% from last month</span>
+                                    <div className="flex items-center gap-1 mt-2 text-sm">
+                                        <TrendingUp className={`w-4 h-4 ${dashboardStats.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                                        <span className={dashboardStats.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                            {dashboardStats.revenueGrowth >= 0 ? '+' : ''}{dashboardStats.revenueGrowth}% vs last month
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
@@ -396,9 +403,11 @@ export function HotelOwnerDashboard() {
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Total Bookings</p>
                                     <p className="text-2xl font-bold">{dashboardStats.totalBookings}</p>
-                                    <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                                        <TrendingUp className="w-4 h-4" />
-                                        <span>+{dashboardStats.bookingsGrowth}% from last month</span>
+                                    <div className="flex items-center gap-1 mt-2 text-sm">
+                                        <TrendingUp className={`w-4 h-4 ${dashboardStats.bookingsGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                                        <span className={dashboardStats.bookingsGrowth >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                            {dashboardStats.bookingsGrowth >= 0 ? '+' : ''}{dashboardStats.bookingsGrowth}% vs last month
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -414,10 +423,6 @@ export function HotelOwnerDashboard() {
                                 <div>
                                     <p className="text-sm text-muted-foreground mb-1">Occupancy Rate</p>
                                     <p className="text-2xl font-bold">{dashboardStats.occupancyRate}%</p>
-                                    <div className="flex items-center gap-1 mt-2 text-sm text-green-600">
-                                        <TrendingUp className="w-4 h-4" />
-                                        <span>+{dashboardStats.occupancyGrowth}% from last month</span>
-                                    </div>
                                 </div>
                                 <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
                                     <Users className="w-6 h-6 text-purple-600" />
