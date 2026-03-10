@@ -25,7 +25,7 @@ const getAllHotels = async (req, res) => {
     const owners = await HotelOwner.find({
       onboardingComplete: true,
       hotelName: { $exists: true, $ne: "" },
-    }).select('name hotelName hotelDescription address city state pincode amenities rooms rating')
+    }).select('name hotelName hotelDescription hotelImage address city state pincode amenities rooms rating')
 
     // Transform owners to hotels format with review stats
     const hotelsWithStats = await Promise.all(owners.map(async (owner) => {
@@ -83,7 +83,7 @@ const getAllHotels = async (req, res) => {
         price: minPrice,
         rating: avgRating.toFixed(1),
         reviews: totalReviews,
-        image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`, // Placeholder image
+        image: owner.hotelImage || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
         features: features.length > 0 ? features : ['wifi', 'restaurant'],
         availableRooms,
         guests: maxGuests,
@@ -238,7 +238,7 @@ const getHotelById = async (req, res) => {
       price: minPrice,
       rating: avgRating.toFixed(1),
       reviews: totalReviews,
-      image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
+      image: owner.hotelImage || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
       features: features.length > 0 ? features : ['wifi', 'restaurant'],
       availableRooms,
       guests: maxGuests,

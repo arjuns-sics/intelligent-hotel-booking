@@ -181,6 +181,7 @@ const completeOnboarding = async (req, res) => {
     const {
       hotelName,
       hotelDescription,
+      hotelImage,
       address,
       city,
       state,
@@ -225,6 +226,11 @@ const completeOnboarding = async (req, res) => {
       petPolicy,
     }
 
+    // Only update hotelImage if provided (otherwise keep default placeholder)
+    if (hotelImage && hotelImage.trim() !== "") {
+      updateData.hotelImage = hotelImage
+    }
+
     const owner = await HotelOwner.findByIdAndUpdate(
       req.ownerId,
       updateData,
@@ -245,6 +251,7 @@ const completeOnboarding = async (req, res) => {
         onboardingComplete: true,
         hotelName: owner.hotelName,
         hotelDescription: owner.hotelDescription,
+        hotelImage: owner.hotelImage,
         address: owner.address,
         city: owner.city,
         state: owner.state,

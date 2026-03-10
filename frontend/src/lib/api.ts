@@ -73,6 +73,7 @@ export interface OwnerProfile {
   phone?: string
   hotelName?: string
   hotelDescription?: string
+  hotelImage?: string
   address?: string
   city?: string
   state?: string

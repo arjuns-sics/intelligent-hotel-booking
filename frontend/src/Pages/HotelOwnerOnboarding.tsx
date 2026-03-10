@@ -27,6 +27,8 @@ import {
     Users,
     Bed,
     Info,
+    Upload,
+    Trash2,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
@@ -92,6 +94,7 @@ export function HotelOwnerOnboarding() {
         // Step 1: Basic Info
         hotelName: "",
         hotelDescription: "",
+        hotelImage: "",
         address: "",
         city: "",
         state: "",
@@ -109,6 +112,86 @@ export function HotelOwnerOnboarding() {
         cancellationPolicy: "flexible",
         petPolicy: "not-allowed",
     })
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file || !file.type.startsWith('image/')) {
+            toast.error('Invalid file type', {
+                description: 'Please upload a valid image file',
+            })
+            return
+        }
+
+        // Check file size (max 5MB before compression)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File too large', {
+                description: 'Please upload an image smaller than 5MB',
+            })
+            return
+        }
+
+        // Compress and convert to base64
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            const imgElement = document.createElement('img')
+            imgElement.onload = () => {
+                const canvas = document.createElement('canvas')
+                let width = imgElement.width
+                let height = imgElement.height
+
+                // Resize if image is too large (max 1920px)
+                const MAX_SIZE = 1920
+                if (width > MAX_SIZE || height > MAX_SIZE) {
+                    const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height)
+                    width = Math.floor(width * ratio)
+                    height = Math.floor(height * ratio)
+                }
+
+                canvas.width = width
+                canvas.height = height
+
+                const ctx = canvas.getContext('2d')
+                if (!ctx) {
+                    toast.error('Failed to process image', {
+                        description: 'Please try again with a different file',
+                    })
+                    return
+                }
+
+                ctx.drawImage(imgElement, 0, 0, width, height)
+
+                // Compress with quality 0.7 (70%) for smaller file size
+                const base64 = canvas.toDataURL(file.type, 0.7)
+
+                // Check compressed size (limit to 1MB after compression)
+                const sizeInBytes = new Blob([base64]).size
+                if (sizeInBytes > 1 * 1024 * 1024) {
+                    toast.error('File too large even after compression', {
+                        description: 'Please upload a smaller image',
+                    })
+                    return
+                }
+
+                setFormData((prev) => ({ ...prev, hotelImage: base64 }))
+            }
+            imgElement.onerror = () => {
+                toast.error('Failed to read image', {
+                    description: 'Please try again with a different file',
+                })
+            }
+            imgElement.src = reader.result as string
+        }
+        reader.onerror = () => {
+            toast.error('Failed to read file', {
+                description: 'Please try again',
+            })
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handleRemoveImage = () => {
+        setFormData((prev) => ({ ...prev, hotelImage: "" }))
+    }
 
     const totalSteps = 4
 
@@ -198,6 +281,7 @@ export function HotelOwnerOnboarding() {
             const hotelPayload = {
                 hotelName: formData.hotelName,
                 hotelDescription: formData.hotelDescription,
+                hotelImage: formData.hotelImage || undefined,
                 address: formData.address,
                 city: formData.city,
                 state: formData.state,
@@ -223,11 +307,12 @@ export function HotelOwnerOnboarding() {
             // Update local storage with new onboarding status and hotel data
             const ownerData = localStorage.getItem("hotelOwner")
             const owner = ownerData ? JSON.parse(ownerData) : null
-            const updatedOwner = { 
-                ...owner, 
+            const updatedOwner = {
+                ...owner,
                 onboardingComplete: true,
                 hotelName: response.data.data.hotelName,
                 hotelDescription: response.data.data.hotelDescription,
+                hotelImage: response.data.data.hotelImage,
                 address: response.data.data.address,
                 city: response.data.data.city,
                 amenities: response.data.data.amenities,
@@ -312,6 +397,49 @@ export function HotelOwnerOnboarding() {
                         className="mt-1"
                         rows={4}
                     />
+                </div>
+
+                <div className="md:col-span-2">
+                    <Label htmlFor="hotelImage">Hotel Image (Optional)</Label>
+                    <div className="mt-2">
+                        {formData.hotelImage ? (
+                            <div className="relative rounded-lg overflow-hidden border border-border">
+                                <img
+                                    src={formData.hotelImage}
+                                    alt="Hotel preview"
+                                    className="w-full h-48 object-cover"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-2 right-2 w-8 h-8 p-0 rounded-full"
+                                    onClick={handleRemoveImage}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-muted-foreground/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                                    <p className="mb-1 text-sm text-muted-foreground">
+                                        <span className="font-semibold">Click to upload</span> or drag and drop
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        PNG, JPG up to 5MB (auto-compressed to 1MB)
+                                    </p>
+                                </div>
+                                <input
+                                    id="hotelImage"
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                />
+                            </label>
+                        )}
+                    </div>
                 </div>
 
                 <div className="md:col-span-2">

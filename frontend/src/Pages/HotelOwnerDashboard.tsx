@@ -185,6 +185,7 @@ export function HotelOwnerDashboard() {
     const hotelData = JSON.parse(localStorage.getItem("hotelData") || "{}")
 
     const hotelName = hotelData.hotelName || ownerData.hotelName || "The Grand Palace Hotel"
+    const hotelImage = hotelData.hotelImage || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80"
 
     // Fetch rooms from backend using TanStack Query
     const { data: rooms = [], isLoading: roomsLoading } = useRooms()
@@ -345,9 +346,11 @@ export function HotelOwnerDashboard() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                                    <Building2 className="w-5 h-5 text-primary-foreground" />
-                                </div>
+                                <img
+                                    src={hotelImage}
+                                    alt={hotelName}
+                                    className="w-10 h-10 rounded-lg object-cover"
+                                />
                                 <div>
                                     <h1 className="font-semibold">{hotelName}</h1>
                                     <p className="text-xs text-muted-foreground">Partner Dashboard</p>

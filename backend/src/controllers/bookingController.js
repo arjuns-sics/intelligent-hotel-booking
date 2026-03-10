@@ -74,7 +74,7 @@ const createBooking = async (req, res) => {
       user: req.userId,
       hotel: hotelId,
       hotelName: hotel.hotelName,
-      hotelImage: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
+      hotelImage: hotel.hotelImage || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
       location,
       roomId,
       roomType,

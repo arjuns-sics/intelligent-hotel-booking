@@ -104,6 +104,10 @@ const hotelOwnerSchema = new mongoose.Schema(
       default: "not-allowed",
       enum: ["allowed", "not-allowed", "on-request"],
     },
+    hotelImage: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+    },
   },
   {
     timestamps: true,
