@@ -12,6 +12,12 @@ const app = express()
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString()
   console.log(`[${timestamp}] ${req.method} ${req.path}`)
+  
+  // Log when response finishes
+  res.on('finish', () => {
+    console.log(`[${timestamp}] ${req.method} ${req.path} - ${res.statusCode}`)
+  })
+  
   next()
 })
 
@@ -76,8 +82,12 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, swaggerOptions))
 if (process.env.NODE_ENV === "production") {
   const path = require("path")
   const publicPath = path.join(__dirname, "../public")
-  app.use(express.static(publicPath))
   
+  console.log(`Serving static files from: ${publicPath}`)
+  
+  // Serve static assets with /intelligent-hotel-booking prefix
+  app.use('/intelligent-hotel-booking', express.static(publicPath))
+
   // SPA fallback - serve index.html for non-API routes
   app.use((req, res, next) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/api-docs')) {
