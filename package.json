@@ -5,11 +5,18 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=frontend",
     "start": "npm run start --workspace=backend",
-    "install:all": "npm install && npm install --workspace=frontend --workspace=backend"
+    "install:all": "npm install && npm install --workspace=frontend --workspace=backend",
+    "setup": "./build.sh",
+    "start:prod": "cd backend && NODE_ENV=production npm start",
+    "docker:build": "docker-compose build --no-cache",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart"
   },
   "keywords": [],
   "author": "",

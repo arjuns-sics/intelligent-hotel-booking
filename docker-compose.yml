@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # MongoDB Database
+  # =============================================================================
+  mongo:
+    image: mongo:7.0
+    container_name: hotel-booking-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: intelligent-hotel-booking
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    # No ports exposed - MongoDB is only accessible within the Docker network
+    networks:
+      - hotel-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # =============================================================================
+  # Backend API + Frontend
+  # =============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotel-booking-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://admin:admin123@mongo:27017/intelligent-hotel-booking?authSource=admin
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+    ports:
+      - "3000:3000"
+    networks:
+      - hotel-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3000/api/ || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./backend/.env:/app/.env:ro  # Optional: Mount custom .env file
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  hotel-network:
+    driver: bridge
+    name: hotel-booking-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mongodb_data:
+    name: hotel-booking-mongodb-data
+  mongodb_config:
+    name: hotel-booking-mongodb-config

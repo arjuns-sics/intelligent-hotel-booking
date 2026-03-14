@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Code Copies by Feature</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      font-size: 24px;
+      border-bottom: 2px solid #eaecef;
+      padding-bottom: 10px;
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 30px;
+      color: #24292e;
+    }
+    pre {
+      background: #f6f8fa;
+      border: 1px solid #e1e4e8;
+      border-radius: 6px;
+      padding: 16px;
+      font-size: 11px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+    code {
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Code Copies by Feature</h1>
+
+  <h2>User Model</h2>
+  <pre><code>const mongoose = require("mongoose")
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+    },
+  },
+  {
+    timestamps: true,
+  }
+)
+
+module.exports = mongoose.model("User", userSchema)</code></pre>
+
+  <h2>Hotel Owner Model</h2>
+  <pre><code>const mongoose = require("mongoose")
+const bcrypt = require("bcryptjs")
+
+const hotelOwnerSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters"],
+      select: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    onboardingComplete: {
+      type: Boolean,
+      default: false,
+    },
+    hotelName: { type: String, trim: true },
+    hotelDescription: { type: String, trim: true },
+    address: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    website: { type: String, trim: true },
+    amenities: { type: [String], default: [] },
+    rooms: {
+      type: [{
+        name: String,
+        description: String,
+        price: Number,
+        maxGuests: Number,
+        beds: String,
+        size: String,
+        amenities: [String],
+        status: {
+          type: String,
+          enum: ["available", "occupied", "maintenance"],
+          default: "available",
+        },
+        roomNumber: String,
+        floor: String,
+      }],
+      default: [],
+    },
+    checkInTime: { type: String, default: "14:00" },
+    checkOutTime: { type: String, default: "11:00" },
+    cancellationPolicy: {
+      type: String,
+      default: "flexible",
+      enum: ["flexible", "moderate", "strict", "non-refundable"],
+    },
+    petPolicy: {
+      type: String,
+      default: "not-allowed",
+      enum: ["allowed", "not-allowed", "on-request"],
+    },
+    hotelImage: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&amp;q=80",
+    },
+  },
+  { timestamps: true }
+)
+
+hotelOwnerSchema.pre("save", async function () {
+  if (!this.isModified("password")) return
+  const salt = await bcrypt.genSalt(10)
+  this.password = await bcrypt.hash(this.password, salt)
+})
+
+hotelOwnerSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password)
+}
+
+const HotelOwner = mongoose.model("HotelOwner", hotelOwnerSchema)
+module.exports = HotelOwner</code></pre>
+
+  <h2>Booking Model</h2>
+  <pre><code>const mongoose = require("mongoose")
+
+const bookingSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    hotel: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "HotelOwner",
+      required: true,
+    },
+    hotelName: { type: String, required: true },
+    hotelImage: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&amp;q=80",
+    },
+    location: { type: String, required: true },
+    roomId: { type: String, required: true },
+    roomType: { type: String, required: true },
+    roomDetails: {
+      price: Number,
+      maxGuests: Number,
+      beds: String,
+      size: String,
+      amenities: [String],
+    },
+    checkIn: { type: Date, required: true },
+    checkOut: { type: Date, required: true },
+    guests: { type: Number, required: true, min: 1 },
+    numberOfNights: { type: Number, required: true },
+    pricePerNight: { type: Number, required: true },
+    totalAmount: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "checked-in", "checked-out", "cancelled"],
+      default: "confirmed",
+    },
+    cancellationPolicy: { type: String, default: "flexible" },
+    specialRequests: { type: String, default: "" },
+  },
+  { timestamps: true }
+)
+
+bookingSchema.index({ user: 1, createdAt: -1 })
+bookingSchema.index({ hotel: 1, status: 1 })
+bookingSchema.index({ checkIn: 1, checkOut: 1 })
+
+bookingSchema.virtual("bookingId").get(function () {
+  return `BK${this._id.toString().slice(-6).toUpperCase()}`
+})
+
+bookingSchema.set("toJSON", { virtuals: true })
+bookingSchema.set("toObject", { virtuals: true })
+
+module.exports = mongoose.model("Booking", bookingSchema)</code></pre>
+
+  <h2>Hotel Controller - Get All Hotels</h2>
+  <pre><code>const HotelOwner = require("../models/HotelOwner")
+const Review = require("../models/Review")
+
+const getAllHotels = async (req, res) => {
+  try {
+    const { location, minPrice, maxPrice, rating, amenities, sortBy = 'rating', sortOrder = 'desc' } = req.query
+
+    const owners = await HotelOwner.find({
+      onboardingComplete: true,
+      hotelName: { $exists: true, $ne: "" },
+    }).select('name hotelName hotelDescription hotelImage address city state pincode amenities rooms rating')
+
+    const hotelsWithStats = await Promise.all(owners.map(async (owner) => {
+      const minPrice = owner.rooms && owner.rooms.length > 0
+        ? Math.min(...owner.rooms.map(r => r.price || 0)) : 0
+
+      const availableRooms = owner.rooms?.filter(room => room.status === 'available').length || 0
+
+      const locationParts = []
+      if (owner.city) locationParts.push(owner.city)
+      if (owner.state) locationParts.push(owner.state)
+      const locationString = locationParts.join(', ') || owner.address || 'India'
+
+      const reviewStats = await Review.aggregate([
+        { $match: { hotel: owner._id } },
+        { $group: { _id: null, avgRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+      ])
+
+      const avgRating = reviewStats.length > 0 ? reviewStats[0].avgRating : 0
+      const totalReviews = reviewStats.length > 0 ? reviewStats[0].totalReviews : 0
+
+      const featureMap = {
+        'wifi': 'wifi', 'WiFi': 'wifi', 'Free WiFi': 'wifi',
+        'restaurant': 'restaurant', 'Restaurant': 'restaurant',
+        'parking': 'parking', 'Parking': 'parking', 'Valet Parking': 'parking',
+        'spa': 'spa', 'Spa': 'spa', 'Spa &amp; Wellness': 'spa',
+        'pool': 'pool', 'Pool': 'pool',
+      }
+
+      const features = (owner.amenities || []).map(a => featureMap[a] || a.toLowerCase()).filter(Boolean)
+      const maxGuests = owner.rooms && owner.rooms.length > 0
+        ? Math.max(...owner.rooms.map(r => r.maxGuests || 2)) : 2
+
+      return {
+        id: owner._id.toString(),
+        name: owner.hotelName || 'Hotel',
+        location: locationString,
+        price: minPrice,
+        rating: avgRating.toFixed(1),
+        reviews: totalReviews,
+        image: owner.hotelImage || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&amp;q=80`,
+        features: features.length > 0 ? features : ['wifi', 'restaurant'],
+        availableRooms,
+        guests: maxGuests,
+        description: owner.hotelDescription || '',
+        rooms: (owner.rooms || []).map((room, index) => ({
+          id: room._id?.toString() || `room-${index}`,
+          name: room.name,
+          description: room.description || '',
+          price: room.price,
+          maxGuests: room.maxGuests || 2,
+          beds: room.beds || '1 King Bed',
+          size: room.size || '30 sqm',
+          amenities: room.amenities || [],
+          status: room.status || 'available',
+          roomNumber: room.roomNumber || '',
+          floor: room.floor || '',
+        })),
+      }
+    }))
+
+    let hotels = hotelsWithStats
+
+    if (location) {
+      const searchLower = location.toLowerCase()
+      hotels = hotels.filter(hotel =>
+        hotel.location.toLowerCase().includes(searchLower) ||
+        hotel.name.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (minPrice) hotels = hotels.filter(hotel => hotel.price >= parseInt(minPrice))
+    if (maxPrice) hotels = hotels.filter(hotel => hotel.price <= parseInt(maxPrice))
+    if (rating) hotels = hotels.filter(hotel => hotel.rating >= parseFloat(rating))
+    if (amenities) {
+      const amenityList = Array.isArray(amenities) ? amenities : amenities.split(',')
+      hotels = hotels.filter(hotel => amenityList.every(amenity => hotel.features.includes(amenity)))
+    }
+    if (guests) hotels = hotels.filter(hotel => hotel.guests >= parseInt(guests))
+
+    hotels = [...hotels].sort((a, b) => {
+      let comparison = 0
+      if (sortBy === 'price') comparison = a.price - b.price
+      else if (sortBy === 'rating') comparison = a.rating - b.rating
+      else if (sortBy === 'name') comparison = a.name.localeCompare(b.name)
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+
+    res.status(200).json({
+      success: true,
+      message: "Hotels retrieved successfully",
+      data: { hotels, count: hotels.length },
+    })
+  } catch (error) {
+    console.error("Get all hotels error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve hotels",
+      error: error.message,
+    })
+  }
+}
+
+module.exports = { getAllHotels, getHotelById }</code></pre>
+
+  <h2>Booking Controller - Create Booking</h2>
+  <pre><code>const Booking = require("../models/Booking")
+const HotelOwner = require("../models/HotelOwner")
+const { logActivity } = require("../middleware/activityLogger")
+
+const createBooking = async (req, res) => {
+  try {
+    const { hotelId, roomId, roomType, roomDetails, checkIn, checkOut, guests, pricePerNight, specialRequests } = req.body
+
+    if (!hotelId || !roomId || !roomType || !checkIn || !checkOut || !guests || !pricePerNight) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide all required booking details",
+      })
+    }
+
+    const hotel = await HotelOwner.findById(hotelId)
+    if (!hotel || !hotel.onboardingComplete) {
+      return res.status(404).json({ success: false, message: "Hotel not found" })
+    }
+
+    const room = hotel.rooms.id(roomId)
+    if (!room || room.status !== "available") {
+      return res.status(400).json({
+        success: false,
+        message: "Selected room is not available",
+      })
+    }
+
+    const checkInDate = new Date(checkIn)
+    const checkOutDate = new Date(checkOut)
+    const numberOfNights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
+
+    if (numberOfNights <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-out date must be after check-in date",
+      })
+    }
+
+    const totalAmount = pricePerNight * numberOfNights
+
+    const locationParts = []
+    if (hotel.city) locationParts.push(hotel.city)
+    if (hotel.state) locationParts.push(hotel.state)
+    const location = locationParts.join(", ") || hotel.address || "India"
+
+    const booking = await Booking.create({
+      user: req.userId,
+      hotel: hotelId,
+      hotelName: hotel.hotelName,
+      hotelImage: hotel.hotelImage || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&amp;q=80`,
+      location,
+      roomId,
+      roomType,
+      roomDetails: roomDetails || {
+        price: room.price,
+        maxGuests: room.maxGuests,
+        beds: room.beds,
+        size: room.size,
+        amenities: room.amenities,
+      },
+      checkIn: checkInDate,
+      checkOut: checkOutDate,
+      guests,
+      numberOfNights,
+      pricePerNight,
+      totalAmount,
+      status: "confirmed",
+      cancellationPolicy: hotel.cancellationPolicy || "flexible",
+      specialRequests: specialRequests || "",
+    })
+
+    const populatedBooking = await Booking.findById(booking._id).populate("user", "name email")
+
+    await logActivity({
+      action: 'booking_created',
+      description: `New booking created for ${hotel.hotelName} by ${req.user?.name || 'Guest'}`,
+      entityType: 'booking',
+      entityId: booking._id,
+      metadata: { bookingId: booking.bookingId, hotelName: hotel.hotelName, checkIn, checkOut, totalAmount },
+      user: req.user,
+      owner: { _id: hotel._id },
+    })
+
+    res.status(201).json({
+      success: true,
+      message: "Booking created successfully",
+      data: {
+        id: populatedBooking._id,
+        bookingId: populatedBooking.bookingId,
+        hotelName: populatedBooking.hotelName,
+        hotelImage: populatedBooking.hotelImage,
+        location: populatedBooking.location,
+        roomType: populatedBooking.roomType,
+        checkIn: populatedBooking.checkIn,
+        checkOut: populatedBooking.checkOut,
+        guests: populatedBooking.guests,
+        numberOfNights: populatedBooking.numberOfNights,
+        pricePerNight: populatedBooking.pricePerNight,
+        totalAmount: populatedBooking.totalAmount,
+        status: populatedBooking.status,
+        bookingDate: populatedBooking.createdAt,
+      },
+    })
+  } catch (error) {
+    console.error("Create booking error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to create booking",
+      error: error.message,
+    })
+  }
+}
+
+module.exports = { createBooking, getUserBookings, getBookingById, cancelBooking, getHotelBookings, updateBookingStatus, getBookingStats }</code></pre>
+
+  <h2>Room Controller - CRUD Operations</h2>
+  <pre><code>const HotelOwner = require("../models/HotelOwner")
+
+const getOwnerRooms = async (req, res) => {
+  try {
+    const owner = await HotelOwner.findById(req.ownerId).select("rooms hotelName")
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" })
+    }
+
+    const rooms = owner.rooms.map((room, index) => ({
+      id: room._id?.toString() || `room-${index}`,
+      name: room.name,
+      description: room.description || "",
+      price: room.price,
+      maxGuests: room.maxGuests || 2,
+      beds: room.beds || "1 King Bed",
+      size: room.size || "30 sqm",
+      amenities: room.amenities || [],
+      status: room.status || "available",
+      roomNumber: room.roomNumber || "",
+      floor: room.floor || "",
+    }))
+
+    res.status(200).json({
+      success: true,
+      message: "Rooms retrieved successfully",
+      data: { hotelName: owner.hotelName, rooms },
+    })
+  } catch (error) {
+    console.error("Get rooms error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve rooms",
+      error: error.message,
+    })
+  }
+}
+
+const createRoom = async (req, res) => {
+  try {
+    const { name, description, price, maxGuests, beds, size, amenities, status, roomNumber, floor } = req.body
+
+    if (!name || !price || !maxGuests || !beds || !size) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in all required fields",
+      })
+    }
+
+    const owner = await HotelOwner.findById(req.ownerId)
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" })
+    }
+
+    const newRoom = {
+      name,
+      description: description || "",
+      price,
+      maxGuests,
+      beds,
+      size,
+      amenities: amenities || [],
+      status: status || "available",
+      roomNumber: roomNumber || "",
+      floor: floor || "",
+    }
+
+    owner.rooms.push(newRoom)
+    await owner.save()
+
+    const createdRoom = owner.rooms[owner.rooms.length - 1]
+
+    res.status(201).json({
+      success: true,
+      message: "Room created successfully",
+      data: {
+        id: createdRoom._id.toString(),
+        name: createdRoom.name,
+        description: createdRoom.description || "",
+        price: createdRoom.price,
+        maxGuests: createdRoom.maxGuests || 2,
+        beds: createdRoom.beds || "1 King Bed",
+        size: createdRoom.size || "30 sqm",
+        amenities: createdRoom.amenities || [],
+        status: createdRoom.status || "available",
+        roomNumber: createdRoom.roomNumber || "",
+        floor: createdRoom.floor || "",
+      },
+    })
+  } catch (error) {
+    console.error("Create room error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Failed to create room",
+      error: error.message,
+    })
+  }
+}
+
+module.exports = { getOwnerRooms, getRoomById, createRoom, updateRoom, deleteRoom }</code></pre>
+
+  <h2>Owner Authentication Controller</h2>
+  <pre><code>const jwt = require("jsonwebtoken")
+const HotelOwner = require("../models/HotelOwner")
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" })
+}
+
+const registerOwner = async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in all required fields",
+      })
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      })
+    }
+
+    const existingOwner = await HotelOwner.findOne({ email })
+    if (existingOwner) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      })
+    }
+
+    const owner = await HotelOwner.create({ name, email, phone, password })
+    const token = generateToken(owner._id)
+
+    res.status(201).json({
+      success: true,
+      message: "Registration successful",
+      data: {
+        id: owner._id,
+        name: owner.name,
+        email: owner.email,
+        phone: owner.phone,
+        onboardingComplete: owner.onboardingComplete,
+        token,
+      },
+    })
+  } catch (error) {
+    console.error("Register owner error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+      error: error.message,
+    })
+  }
+}
+
+const loginOwner = async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter both email and password",
+      })
+    }
+
+    const owner = await HotelOwner.findOne({ email }).select("+password")
+    if (!owner) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      })
+    }
+
+    const isPasswordValid = await owner.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      })
+    }
+
+    const token = generateToken(owner._id)
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        id: owner._id,
+        name: owner.name,
+        email: owner.email,
+        phone: owner.phone,
+        onboardingComplete: owner.onboardingComplete,
+        token,
+      },
+    })
+  } catch (error) {
+    console.error("Login owner error:", error)
+    res.status(500).json({
+      success: false,
+      message: "Login failed",
+      error: error.message,
+    })
+  }
+}
+
+module.exports = { registerOwner, loginOwner, getOwnerProfile, completeOnboarding, getOwnerRooms }</code></pre>
+
+  <h2>User Dashboard Component (React/TypeScript)</h2>
+  <pre><code>import { useState, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Search, MapPin, Star, Building2, Users } from "lucide-react"
+import { api } from "@/lib/api"
+import { FilterSidebar } from "@/components/FilterSidebar"
+import { Input } from "@/components/ui/input"
+
+interface Hotel {
+  id: string
+  name: string
+  location: string
+  price: number
+  rating: number
+  reviews: number
+  image: string
+  features: string[]
+  availableRooms: number
+  guests: number
+}
+
+interface SearchFilters {
+  location: string
+  checkIn: string
+  checkOut: string
+  guests: number
+  minPrice: number
+  maxPrice: number
+  rating: number
+  amenities: string[]
+}
+
+export function UserDashboard() {
+  const navigate = useNavigate()
+  const [filters, setFilters] = useState&lt;SearchFilters&gt;(DEFAULT_FILTERS)
+  const [sortBy, setSortBy] = useState&lt;'price' | 'rating' | 'name'&gt;('rating')
+  const [sortOrder, setSortOrder] = useState&lt;'asc' | 'desc'&gt;('desc')
+
+  const { data: hotelsResponse, isLoading, error } = useQuery({
+    queryKey: ['hotels', filters, sortBy, sortOrder],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (filters.location) params.set('location', filters.location)
+      if (filters.guests) params.set('guests', filters.guests.toString())
+      if (filters.minPrice) params.set('minPrice', filters.minPrice.toString())
+      if (filters.maxPrice) params.set('maxPrice', filters.maxPrice.toString())
+      if (filters.rating) params.set('rating', filters.rating.toString())
+      if (filters.amenities.length > 0) params.set('amenities', filters.amenities.join(','))
+      params.set('sortBy', sortBy)
+      params.set('sortOrder', sortOrder)
+
+      const response = await api.get('/hotels', { params })
+      return response.data.data as { hotels: Hotel[]; count: number }
+    },
+    retry: false,
+  })
+
+  const hotels = hotelsResponse?.hotels || []
+
+  const handleFilterChange = useCallback((key: keyof SearchFilters, value: unknown) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }, [])
+
+  if (error) {
+    return (
+      &lt;div className="min-h-screen bg-background"&gt;
+        &lt;div className="max-w-7xl mx-auto px-6 py-8"&gt;
+          &lt;div className="text-center py-12"&gt;
+            &lt;Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" /&gt;
+            &lt;h3 className="text-lg font-semibold mb-2"&gt;Unable to load hotels&lt;/h3&gt;
+            &lt;Button onClick={() =&gt; window.location.reload()}&gt;Refresh Page&lt;/Button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    )
+  }
+
+  return (
+    &lt;div className="min-h-screen bg-background"&gt;
+      &lt;header className="sticky top-0 z-50 bg-background border-b border-border"&gt;
+        &lt;div className="max-w-7xl mx-auto px-6 py-4"&gt;
+          &lt;div className="flex items-center justify-between"&gt;
+            &lt;div&gt;
+              &lt;h1 className="text-2xl font-bold"&gt;Welcome back&lt;/h1&gt;
+              &lt;p className="text-muted-foreground"&gt;Find your perfect stay&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div className="flex items-center gap-4"&gt;
+              &lt;Button variant="outline" onClick={() =&gt; navigate('/bookings')}&gt;My Bookings&lt;/Button&gt;
+              &lt;Button onClick={() =&gt; {
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                navigate('/login')
+              }}&gt;Sign Out&lt;/Button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/header&gt;
+
+      &lt;div className="max-w-7xl mx-auto px-6 py-8"&gt;
+        &lt;div className="grid grid-cols-1 lg:grid-cols-4 gap-8"&gt;
+          &lt;aside className="lg:col-span-1"&gt;
+            &lt;FilterSidebar
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onPriceChange={(min, max) =&gt; setFilters(prev =&gt; ({ ...prev, minPrice: min, maxPrice: max }))}
+            /&gt;
+          &lt;/aside&gt;
+
+          &lt;main className="lg:col-span-3"&gt;
+            {isLoading ? (
+              &lt;div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6"&gt;
+                {[...Array(6)].map((_, i) =&gt; (
+                  &lt;Card key={i} className="overflow-hidden"&gt;
+                    &lt;Skeleton className="h-48 w-full" /&gt;
+                    &lt;CardContent className="p-4"&gt;
+                      &lt;Skeleton className="h-5 w-3/4 mb-2" /&gt;
+                      &lt;Skeleton className="h-4 w-1/2" /&gt;
+                    &lt;/CardContent&gt;
+                  &lt;/Card&gt;
+                ))}
+              &lt;/div&gt;
+            ) : hotels.length > 0 ? (
+              &lt;div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6"&gt;
+                {hotels.map((hotel) =&gt; (
+                  &lt;Card key={hotel.id} className="hover:shadow-lg transition-shadow cursor-pointer"&gt;
+                    &lt;div className="relative h-48 overflow-hidden rounded-t-lg"&gt;
+                      &lt;img src={hotel.image} alt={hotel.name} className="w-full h-full object-cover" /&gt;
+                      &lt;div className="absolute top-3 right-3"&gt;
+                        &lt;Badge className="bg-background/90 backdrop-blur-sm"&gt;
+                          &lt;Star className="w-3 h-3 mr-1 fill-primary text-primary" /&gt;
+                          {hotel.rating}
+                        &lt;/Badge&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;CardContent className="p-4"&gt;
+                      &lt;div className="flex items-start justify-between gap-2 mb-2"&gt;
+                        &lt;div&gt;
+                          &lt;h3 className="font-semibold text-lg"&gt;{hotel.name}&lt;/h3&gt;
+                          &lt;div className="flex items-center gap-1 text-sm text-muted-foreground"&gt;
+                            &lt;MapPin className="w-4 h-4" /&gt;
+                            {hotel.location}
+                          &lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div className="text-right"&gt;
+                          &lt;div className="text-2xl font-bold text-primary"&gt;₹{hotel.price}&lt;/div&gt;
+                          &lt;div className="text-xs text-muted-foreground"&gt;per night&lt;/div&gt;
+                        &lt;/div&gt;
+                      &lt;/div&gt;
+
+                      &lt;Button size="sm" onClick={() =&gt; navigate(`/hotel/${hotel.id}`)}&gt;View Details&lt;/Button&gt;
+                    &lt;/CardContent&gt;
+                  &lt;/Card&gt;
+                ))}
+              &lt;/div&gt;
+            ) : (
+              &lt;div className="text-center py-12"&gt;
+                &lt;Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" /&gt;
+                &lt;h3 className="text-lg font-semibold mb-2"&gt;No hotels found&lt;/h3&gt;
+                &lt;Button onClick={() =&gt; setFilters(DEFAULT_FILTERS)}&gt;Clear Filters&lt;/Button&gt;
+              &lt;/div&gt;
+            )}
+          &lt;/main&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  )
+}</code></pre>
+</body>
+</html>
