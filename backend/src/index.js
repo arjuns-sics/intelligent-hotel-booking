@@ -25,25 +25,6 @@ app.use(cors({
 }))
 
 connectDB().then(() => {
-  // Serve static frontend files in production
-  if (process.env.NODE_ENV === "production") {
-    const publicPath = path.join(__dirname, "../public")
-    
-    // Serve static files from root (nginx strips /intelligent-hotel-booking prefix)
-    app.use(express.static(publicPath))
-    
-    // Serve index.html for all non-API routes (SPA support)
-    // Use middleware approach for Express 5.x compatibility
-    app.use((req, res, next) => {
-      // If it's not an API route, serve index.html
-      if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(publicPath, "index.html"))
-      } else {
-        next()
-      }
-    })
-  }
-
   app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗

@@ -65,6 +65,22 @@ app.use("/api", routes)
 // Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, swaggerOptions))
 
+// Serve static frontend files in production
+if (process.env.NODE_ENV === "production") {
+  const path = require("path")
+  const publicPath = path.join(__dirname, "../public")
+  app.use(express.static(publicPath))
+  
+  // SPA fallback - serve index.html for non-API routes
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/api-docs')) {
+      res.sendFile(path.join(publicPath, "index.html"))
+    } else {
+      next()
+    }
+  })
+}
+
 // Error handling
 app.use(notFound)
 app.use(errorHandler)
