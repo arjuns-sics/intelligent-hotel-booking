@@ -37,9 +37,9 @@ connectDB().then(() => {
       res.redirect("/intelligent-hotel-booking")
     })
     
-    // Serve index.html for all non-API routes under base path (SPA support)
-    // Express 5.x requires named parameters in routes
-    app.get("/intelligent-hotel-booking/:path(*)", (req, res) => {
+    // Serve index.html for SPA routing (catch-all for client-side routes)
+    // This handles page refreshes on routes like /intelligent-hotel-booking/admin/login
+    app.all("/intelligent-hotel-booking", (req, res) => {
       res.sendFile(path.join(publicPath, "index.html"))
     })
   }
