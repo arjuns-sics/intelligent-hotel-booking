@@ -33,8 +33,14 @@ connectDB().then(() => {
     app.use(express.static(publicPath))
     
     // Serve index.html for all non-API routes (SPA support)
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(publicPath, "index.html"))
+    // Use middleware approach for Express 5.x compatibility
+    app.use((req, res, next) => {
+      // If it's not an API route, serve index.html
+      if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(publicPath, "index.html"))
+      } else {
+        next()
+      }
     })
   }
 
