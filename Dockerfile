@@ -55,10 +55,11 @@ COPY backend/src/ ./src/
 COPY --from=frontend-builder /app/frontend/dist ./public
 
 # Create .env file with production defaults
-RUN echo "PORT=3000" > .env && \
+# Use $RANDOM for JWT secret if openssl not available
+RUN sh -c 'echo "PORT=3000" > .env && \
     echo "MONGODB_URI=mongodb://mongo:27017/intelligent-hotel-booking" >> .env && \
     echo "NODE_ENV=production" >> .env && \
-    echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+    echo "JWT_SECRET=${JWT_SECRET:-hotel-booking-secret-$(date +%s)-$RANDOM}" >> .env'
 
 # Create directories for scripts
 RUN mkdir -p src/scripts
