@@ -52,8 +52,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    volumes:
-      - ./backend/.env:/app/.env:ro  # Optional: Mount custom .env file
+    # Optional: Mount custom .env file for JWT_SECRET override
+    # volumes:
+    #   - ./backend/.env:/app/.env:ro
     logging:
       driver: "json-file"
       options:
