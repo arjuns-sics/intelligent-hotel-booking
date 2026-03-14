@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "init:admin": "node src/scripts/initAdmin.js",
+    "check:data": "node src/scripts/checkData.js"
   },
   "keywords": [],
   "author": "",

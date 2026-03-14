@@ -9,14 +9,14 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Building2, Mail, Lock, ArrowRight, Shield } from "lucide-react"
+import { Shield, Mail, Lock, ArrowRight } from "lucide-react"
 import { useState } from "react"
-import { useAuth } from "@/context/AuthProvider"
+import { useAdminAuth } from "@/context/AdminAuthProvider"
 
-export function LoginPage() {
+export function AdminLoginPage() {
     const navigate = useNavigate()
-    const { login } = useAuth()
-    
+    const { login } = useAdminAuth()
+
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false)
@@ -37,7 +37,7 @@ export function LoginPage() {
             const result = await login(email, password)
 
             if (result.success) {
-                navigate("/dashboard")
+                navigate("/admin/dashboard")
             } else {
                 setError(result.error || "Login failed")
             }
@@ -56,14 +56,14 @@ export function LoginPage() {
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-primary-foreground" />
+                            <Shield className="w-5 h-5 text-primary-foreground" />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">Intelligent Hotel</span>
+                        <span className="text-xl font-bold tracking-tight">Admin Portal</span>
                     </Link>
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground">Don't have an account?</span>
+                        <span className="text-sm text-muted-foreground">Not an admin?</span>
                         <Button variant="outline" asChild>
-                            <Link to="/register">Sign Up</Link>
+                            <Link to="/login">User Login</Link>
                         </Button>
                     </div>
                 </div>
@@ -74,9 +74,9 @@ export function LoginPage() {
                 <div className="w-full max-w-sm">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+                            <CardTitle className="text-2xl">Admin Access</CardTitle>
                             <CardDescription>
-                                Enter your credentials to access your account
+                                Enter your credentials to access the admin panel
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -89,7 +89,7 @@ export function LoginPage() {
                                             <Input
                                                 id="email"
                                                 type="email"
-                                                placeholder="john@example.com"
+                                                placeholder="admin@hotel.com"
                                                 required
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
@@ -99,15 +99,7 @@ export function LoginPage() {
                                         </div>
                                     </Field>
                                     <Field>
-                                        <div className="flex items-center justify-between">
-                                            <FieldLabel htmlFor="password">Password</FieldLabel>
-                                            <Link
-                                                to="/reset-password"
-                                                className="text-sm text-primary hover:underline underline-offset-4"
-                                            >
-                                                Forgot password?
-                                            </Link>
-                                        </div>
+                                        <FieldLabel htmlFor="password">Password</FieldLabel>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                             <Input
@@ -131,22 +123,13 @@ export function LoginPage() {
                                             {loading ? "Signing In..." : "Sign In"}
                                             <ArrowRight className="w-4 h-4 ml-2" />
                                         </Button>
-                                        
-                                        <FieldDescription className="text-center">
-                                            Don't have an account?{" "}
-                                            <Link to="/register" className="text-primary hover:underline">
-                                                Sign up
-                                            </Link>
-                                        </FieldDescription>
 
                                         <FieldDescription className="text-center mt-4">
-                                            <Link
-                                                to="/admin/login"
-                                                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
-                                            >
-                                                <Shield className="w-3 h-3" />
-                                                Sign in as Admin
-                                            </Link>
+                                            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                                                <strong>Demo Credentials:</strong><br />
+                                                Email: admin@hotel.com<br />
+                                                Password: admin123
+                                            </div>
                                         </FieldDescription>
                                     </Field>
                                 </FieldGroup>
@@ -159,4 +142,4 @@ export function LoginPage() {
     )
 }
 
-export default LoginPage
+export default AdminLoginPage

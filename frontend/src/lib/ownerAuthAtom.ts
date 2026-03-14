@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import api from './api';
-import { showSuccess, showError } from './notifications';
+import { showSuccess, showError, showInfo } from './notifications';
 
 // Types
 interface HotelOwner {

@@ -7,6 +7,7 @@ import { Toaster } from "sonner"
 
 import { queryClient } from "./lib/queryClient"
 import { AuthProvider } from "./context/AuthProvider"
+import { AdminAuthProvider } from "./context/AdminAuthProvider"
 import App from "./App.tsx"
 
 import "./index.css"
@@ -17,8 +18,10 @@ createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <App />
-            <Toaster position="top-right" richColors />
+            <AdminAuthProvider>
+              <App />
+              <Toaster position="top-right" richColors />
+            </AdminAuthProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

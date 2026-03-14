@@ -13,8 +13,8 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Try hotel owner token first, then user token
-    const token = localStorage.getItem("hotelOwnerToken") || localStorage.getItem("token")
+    // Try admin token first, then hotel owner token, then user token
+    const token = localStorage.getItem("adminToken") || localStorage.getItem("hotelOwnerToken") || localStorage.getItem("token")
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -311,6 +311,73 @@ export const exportApi = {
     if (startDate) params.append('startDate', startDate)
     if (endDate) params.append('endDate', endDate)
     window.open(`${API_BASE_URL}${API_PREFIX}/owner/export/report/csv?${params.toString()}`, '_blank')
+  },
+}
+
+// Admin API
+export const adminApi = {
+  login: async (data: { email: string; password: string }) => {
+    const response = await api.post("/admin/login", data)
+    return response.data
+  },
+
+  getProfile: async () => {
+    const response = await api.get("/admin/profile")
+    return response.data
+  },
+
+  getStats: async () => {
+    const response = await api.get("/admin/stats")
+    return response.data
+  },
+
+  // User management
+  getUsers: async (page = 1, limit = 10, search = "") => {
+    const response = await api.get("/admin/users", {
+      params: { page, limit, search },
+    })
+    return response.data
+  },
+
+  getUser: async (userId: string) => {
+    const response = await api.get(`/admin/users/${userId}`)
+    return response.data
+  },
+
+  deleteUser: async (userId: string) => {
+    const response = await api.delete(`/admin/users/${userId}`)
+    return response.data
+  },
+
+  // Hotel management
+  getHotels: async (page = 1, limit = 10, search = "", status = "") => {
+    const response = await api.get("/admin/hotels", {
+      params: { page, limit, search, status },
+    })
+    return response.data
+  },
+
+  getHotel: async (hotelId: string) => {
+    const response = await api.get(`/admin/hotels/${hotelId}`)
+    return response.data
+  },
+
+  verifyHotel: async (hotelId: string) => {
+    const response = await api.patch(`/admin/hotels/${hotelId}/verify`)
+    return response.data
+  },
+
+  deleteHotel: async (hotelId: string) => {
+    const response = await api.delete(`/admin/hotels/${hotelId}`)
+    return response.data
+  },
+
+  // Booking management
+  getBookings: async (page = 1, limit = 10, status = "") => {
+    const response = await api.get("/admin/bookings", {
+      params: { page, limit, status },
+    })
+    return response.data
   },
 }
 

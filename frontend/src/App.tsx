@@ -11,11 +11,19 @@ import { HotelOwnerRegisterPage } from "@/Pages/HotelOwnerRegisterPage"
 import { HotelOwnerOnboarding } from "@/Pages/HotelOwnerOnboarding"
 import { HotelOwnerDashboard } from "@/Pages/HotelOwnerDashboard"
 import { HotelOwnerBookingsPage } from "@/Pages/HotelOwnerBookingsPage"
+import { AdminLoginPage } from "@/Pages/AdminLoginPage"
+import { AdminDashboard } from "@/Pages/AdminDashboard"
+import { useAdminAuth } from "@/context/AdminAuthProvider"
 import { useAuth } from "@/context/AuthProvider"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
+}
+
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAdminAuth()
+  return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />
 }
 
 function HotelOwnerRoute({ children }: { children: React.ReactNode }) {
@@ -107,6 +115,17 @@ export function App() {
           <HotelOwnerRoute>
             <HotelOwnerBookingsPage />
           </HotelOwnerRoute>
+        }
+      />
+
+      {/* Admin Routes */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <AdminProtectedRoute>
+            <AdminDashboard />
+          </AdminProtectedRoute>
         }
       />
     </Routes>

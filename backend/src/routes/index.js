@@ -7,6 +7,7 @@ const ownerRoutes = require("./ownerRoutes")
 const hotelRoutes = require("./hotels")
 const bookingRoutes = require("./bookings")
 const reviewRoutes = require("./reviews")
+const adminRoutes = require("./admin")
 
 router.get("/", (req, res) => {
   res.json({ message: "API is running" })
@@ -17,6 +18,9 @@ router.use("/auth", authRoutes)
 
 // Hotel owner routes
 router.use("/owner", ownerRoutes)
+
+// Admin routes
+router.use("/admin", adminRoutes)
 
 // Public hotel routes
 router.use("/hotels", hotelRoutes)
