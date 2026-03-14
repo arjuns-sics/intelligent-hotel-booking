@@ -8,6 +8,13 @@ const { swaggerUi, specs, swaggerOptions } = require("./config/swagger")
 
 const app = express()
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString()
+  console.log(`[${timestamp}] ${req.method} ${req.path}`)
+  next()
+})
+
 // // Security middleware
 // app.use(helmet({
 //   hsts: false,
