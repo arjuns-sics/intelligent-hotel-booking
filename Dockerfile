@@ -26,7 +26,7 @@ COPY frontend/ ./
 RUN sed -i "s|base:.*|base: '/intelligent-hotel-booking/',|" vite.config.ts
 
 # Build frontend (use npx vite build to skip TypeScript checking)
-RUN npx vite build --force
+RUN npx vite build
 
 # -----------------------------------------------------------------------------
 # Stage 2: Backend Production Image
