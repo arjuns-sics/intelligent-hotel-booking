@@ -29,17 +29,11 @@ connectDB().then(() => {
   if (process.env.NODE_ENV === "production") {
     const publicPath = path.join(__dirname, "../public")
     
-    // Serve static files from /intelligent-hotel-booking base path
-    app.use('/intelligent-hotel-booking', express.static(publicPath))
+    // Serve static files from root (nginx strips /intelligent-hotel-booking prefix)
+    app.use(express.static(publicPath))
     
-    // Redirect root to base path for SPA
-    app.get("/", (req, res) => {
-      res.redirect("/intelligent-hotel-booking")
-    })
-    
-    // Serve index.html for SPA routing (catch-all for client-side routes)
-    // This handles page refreshes on routes like /intelligent-hotel-booking/admin/login
-    app.all("/intelligent-hotel-booking", (req, res) => {
+    // Serve index.html for all non-API routes (SPA support)
+    app.get("*", (req, res) => {
       res.sendFile(path.join(publicPath, "index.html"))
     })
   }

@@ -22,7 +22,7 @@ RUN npm install --yes --silent
 # Copy frontend source
 COPY frontend/ ./
 
-# Configure base path and build
+# Configure base path for nginx routing
 RUN sed -i "s|base:.*|base: '/intelligent-hotel-booking/',|" vite.config.ts
 
 # Build frontend (use npx vite build to skip TypeScript checking)
