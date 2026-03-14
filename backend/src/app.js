@@ -86,7 +86,7 @@ if (process.env.NODE_ENV === "production") {
   console.log(`Serving static files from: ${publicPath}`)
   
   // Serve static assets with /intelligent-hotel-booking prefix
-  app.use('/intelligent-hotel-booking', express.static(publicPath))
+  app.use('/', express.static(publicPath))
 
   // SPA fallback - serve index.html for non-API routes
   app.use((req, res, next) => {
