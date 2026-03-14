@@ -16,8 +16,8 @@ WORKDIR /app/frontend
 # Copy frontend package files
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production --silent
+# Install dependencies (use npm install since we may not have package-lock.json)
+RUN npm install --silent
 
 # Copy frontend source
 COPY frontend/ ./
@@ -45,8 +45,8 @@ WORKDIR /app
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Install backend dependencies
-RUN npm ci --only=production --silent
+# Install backend dependencies (use npm install for compatibility)
+RUN npm install --silent
 
 # Copy backend source
 COPY backend/src/ ./src/
