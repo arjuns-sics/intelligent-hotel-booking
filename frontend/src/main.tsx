@@ -16,7 +16,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <JotaiProvider>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <BrowserRouter basename="/intelligent-hotel-booking">
           <AuthProvider>
             <AdminAuthProvider>
               <App />
