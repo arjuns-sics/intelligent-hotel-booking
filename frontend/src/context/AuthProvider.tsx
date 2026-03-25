@@ -1,12 +1,14 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useAtom } from 'jotai';
-import { 
-  tokenAtom, 
-  userAtom, 
-  isAuthenticatedAtom, 
-  loginAtom, 
-  registerAtom, 
-  logoutAtom 
+import {
+  tokenAtom,
+  userAtom,
+  isAuthenticatedAtom,
+} from '../lib/authAtoms';
+import {
+  loginAtom,
+  registerAtom,
+  logoutAtom,
 } from '../lib/authAtom';
 
 interface User {
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token] = useAtom(tokenAtom);
   const [user] = useAtom(userAtom);
   const [isAuthenticated] = useAtom(isAuthenticatedAtom);
-  
+
   const [, login] = useAtom(loginAtom);
   const [, register] = useAtom(registerAtom);
   const [, logout] = useAtom(logoutAtom);

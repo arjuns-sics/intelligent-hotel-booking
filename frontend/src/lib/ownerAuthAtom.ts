@@ -1,61 +1,14 @@
 import { atom } from 'jotai';
 import api from './api';
 import { showSuccess, showError, showInfo } from './notifications';
-
-// Types
-interface HotelOwner {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-}
-
-interface OwnerAuthResponse {
-  success: boolean;
-  message: string;
-  data: HotelOwner & { token: string };
-}
-
-// Initialize atoms with localStorage values
-const getStoredOwnerToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('hotelOwnerToken');
-  }
-  return null;
-};
-
-const getStoredOwner = (): HotelOwner | null => {
-  if (typeof window !== 'undefined') {
-    const storedOwner = localStorage.getItem('hotelOwner');
-    return storedOwner ? JSON.parse(storedOwner) : null;
-  }
-  return null;
-};
-
-const getOnboardingComplete = (): boolean => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('onboardingComplete') === 'true';
-  }
-  return false;
-};
-
-// Atoms for hotel owner authentication state
-export const ownerTokenAtom = atom<string | null>(getStoredOwnerToken());
-export const ownerAtom = atom<HotelOwner | null>(getStoredOwner());
-export const onboardingCompleteAtom = atom<boolean>(getOnboardingComplete());
-
-// Derived atom to check if owner is authenticated
-export const isOwnerAuthenticatedAtom = atom<boolean>((get) => {
-  const token = get(ownerTokenAtom);
-  return !!token;
-});
+import { ownerTokenAtom, ownerAtom, onboardingCompleteAtom, clearAllAuthState } from './authAtoms';
 
 // Login atom
 export const loginOwnerAtom = atom(
   null,
   async (_get, set, { email, password }: { email: string; password: string }) => {
     try {
-      const response = await api.post<OwnerAuthResponse>('/owner/login', { email, password });
+      const response = await api.post('/owner/login', { email, password });
       const { token, ...ownerData } = response.data.data;
 
       set(ownerTokenAtom, token);
@@ -89,7 +42,7 @@ export const registerOwnerAtom = atom(
     phone?: string;
   }) => {
     try {
-      const response = await api.post<OwnerAuthResponse>('/owner/register', { 
+      const response = await api.post('/owner/register', { 
         name, 
         email, 
         password,
@@ -122,12 +75,7 @@ export const registerOwnerAtom = atom(
 export const logoutOwnerAtom = atom(
   null,
   (_get, set) => {
-    set(ownerTokenAtom, null);
-    set(ownerAtom, null);
-    set(onboardingCompleteAtom, false);
-    localStorage.removeItem('hotelOwnerToken');
-    localStorage.removeItem('hotelOwner');
-    localStorage.removeItem('onboardingComplete');
+    clearAllAuthState(set);
     showInfo('Logged out successfully');
   }
 );

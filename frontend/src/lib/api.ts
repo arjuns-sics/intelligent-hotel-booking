@@ -52,6 +52,18 @@ api.interceptors.response.use(
   }
 )
 
+// Auth types
+export interface AuthResponse {
+  success: boolean
+  message: string
+  user: {
+    _id: string
+    name: string
+    email: string
+  }
+  token: string
+}
+
 export interface Room {
   id: string
   name: string

@@ -1,46 +1,8 @@
 import { atom } from 'jotai';
 import api from './api';
 import { showSuccess, showError, showInfo } from './notifications';
-
-// Types
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-interface AuthResponse {
-  success: boolean;
-  message: string;
-  user: User;
-  token: string;
-}
-
-// Initialize atoms with localStorage values
-const getStoredToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
-  }
-  return null;
-};
-
-const getStoredUser = (): User | null => {
-  if (typeof window !== 'undefined') {
-    const storedUser = localStorage.getItem('user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  }
-  return null;
-};
-
-// Atoms for authentication state
-export const tokenAtom = atom<string | null>(getStoredToken());
-export const userAtom = atom<User | null>(getStoredUser());
-
-// Derived atom to check if user is authenticated
-export const isAuthenticatedAtom = atom<boolean>((get) => {
-  const token = get(tokenAtom);
-  return !!token;
-});
+import { tokenAtom, userAtom, clearAllAuthState } from './authAtoms';
+import type { AuthResponse } from './api';
 
 // Login atom
 export const loginAtom = atom(
@@ -104,10 +66,7 @@ export const registerAtom = atom(
 export const logoutAtom = atom(
   null,
   (_get, set) => {
-    set(tokenAtom, null);
-    set(userAtom, null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAllAuthState(set);
     showInfo('Logged out successfully');
   }
 );

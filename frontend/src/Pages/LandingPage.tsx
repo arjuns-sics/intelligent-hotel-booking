@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { AArrowUpIcon } from "@/components/ui/a-arrow-up"
 import { useAtomValue } from "jotai"
-import { isAuthenticatedAtom, userAtom } from "@/lib/authAtom"
+import { isAuthenticatedAtom, userAtom } from "@/lib/authAtoms"
 
 const hotels = [
   {

@@ -1,53 +1,14 @@
 import { atom } from 'jotai';
 import api from './api';
 import { showSuccess, showError, showInfo } from './notifications';
-
-// Types
-interface Admin {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-interface AdminAuthResponse {
-  success: boolean;
-  message: string;
-  data: Admin & { token: string };
-}
-
-// Initialize atoms with localStorage values
-const getStoredToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('adminToken');
-  }
-  return null;
-};
-
-const getStoredAdmin = (): Admin | null => {
-  if (typeof window !== 'undefined') {
-    const storedAdmin = localStorage.getItem('admin');
-    return storedAdmin ? JSON.parse(storedAdmin) : null;
-  }
-  return null;
-};
-
-// Atoms for admin authentication state
-export const adminTokenAtom = atom<string | null>(getStoredToken());
-export const adminAtom = atom<Admin | null>(getStoredAdmin());
-
-// Derived atom to check if admin is authenticated
-export const isAdminAuthenticatedAtom = atom<boolean>((get) => {
-  const token = get(adminTokenAtom);
-  return !!token;
-});
+import { adminTokenAtom, adminAtom, clearAllAuthState } from './authAtoms';
 
 // Login atom
 export const adminLoginAtom = atom(
   null,
   async (_get, set, { email, password }: { email: string; password: string }) => {
     try {
-      const response = await api.post<AdminAuthResponse>('/admin/login', { email, password });
+      const response = await api.post('/admin/login', { email, password });
       const { token, ...adminData } = response.data.data;
 
       set(adminTokenAtom, token);
@@ -75,10 +36,7 @@ export const adminLoginAtom = atom(
 export const adminLogoutAtom = atom(
   null,
   (_get, set) => {
-    set(adminTokenAtom, null);
-    set(adminAtom, null);
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('admin');
+    clearAllAuthState(set);
     showInfo('Logged out successfully');
   }
 );
