@@ -13,8 +13,25 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Try admin token first, then hotel owner token, then user token
-    const token = localStorage.getItem("adminToken") || localStorage.getItem("hotelOwnerToken") || localStorage.getItem("token")
+    // Check which account type is actually logged in by looking at the user object
+    // This ensures we use the correct token for the current session
+    const admin = localStorage.getItem("admin")
+    const hotelOwner = localStorage.getItem("hotelOwner")
+    const user = localStorage.getItem("user")
+
+    let token: string | null = null
+
+    if (admin) {
+      // Admin is logged in
+      token = localStorage.getItem("adminToken")
+    } else if (hotelOwner) {
+      // Hotel owner is logged in
+      token = localStorage.getItem("hotelOwnerToken")
+    } else if (user) {
+      // Regular user is logged in
+      token = localStorage.getItem("token")
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
