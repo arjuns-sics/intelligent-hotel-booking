@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { AArrowUpIcon } from "@/components/ui/a-arrow-up"
 import { useAtomValue } from "jotai"
-import { isAuthenticatedAtom, userAtom } from "@/lib/authAtoms"
+import { isAuthenticatedAtom, userAtom, clearAllAuthState } from "@/lib/authAtoms"
 
 const hotels = [
   {
@@ -120,8 +120,8 @@ export function LandingPage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    // Clear all auth state from atoms and localStorage
+    clearAllAuthState(() => {})
     window.dispatchEvent(new Event('storage'))
     navigate('/')
     window.location.reload()
@@ -138,7 +138,7 @@ export function LandingPage() {
             </div>
             <span className="text-xl font-bold tracking-tight">Intelligent Hotel</span>
           </div>
-          
+
           <div className="hidden md:flex items-center gap-8">
             <a href="#hotels" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Hotels</a>
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -181,9 +181,9 @@ export function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-          {/* background image */}
-        <img 
-          src="https://images.unsplash.com/photo-1759920952159-a2d3ce5c1d73?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+        {/* background image */}
+        <img
+          src="https://images.unsplash.com/photo-1759920952159-a2d3ce5c1d73?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Hotel Lobby"
           className="absolute inset-0 w-full h-full object-cover opacity-20 bg-fixed"
         />
@@ -193,20 +193,20 @@ export function LandingPage() {
           <div className="absolute top-1/4 right-1/4 w-150 h-150 rounded-full bg-primary/5 blur-3xl" />
           <div className="absolute bottom-1/4 left-1/4 w-100 h-100 rounded-full bg-primary/3 blur-3xl" />
         </div>
-      
+
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center pt-20">
           <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium">
             ✨ Smart Hotel Booking Reimagined
           </Badge>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
             Discover Your Next
             <span className="block text-primary">Perfect Stay</span>
           </h1>
-          
+
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
-            Experience intelligent hotel search with real-time availability, 
+            Experience intelligent hotel search with real-time availability,
             smart recommendations, and seamless booking. Your ideal vacation is just a click away.
           </p>
 
@@ -218,8 +218,8 @@ export function LandingPage() {
                   <MapPin className="w-4 h-4 text-primary" />
                   Location
                 </label>
-                <Input 
-                  placeholder="Where are you going?" 
+                <Input
+                  placeholder="Where are you going?"
                   value={searchLocation}
                   onChange={(e) => setSearchLocation(e.target.value)}
                   className="h-12"
@@ -230,7 +230,7 @@ export function LandingPage() {
                   <Calendar className="w-4 h-4 text-primary" />
                   Check In
                 </label>
-                <Input 
+                <Input
                   type="date"
                   value={checkIn}
                   onChange={(e) => setCheckIn(e.target.value)}
@@ -242,7 +242,7 @@ export function LandingPage() {
                   <Calendar className="w-4 h-4 text-primary" />
                   Check Out
                 </label>
-                <Input 
+                <Input
                   type="date"
                   value={checkOut}
                   onChange={(e) => setCheckOut(e.target.value)}
@@ -254,7 +254,7 @@ export function LandingPage() {
                   <User className="w-4 h-4 text-primary" />
                   Guests
                 </label>
-                <select 
+                <select
                   value={guests}
                   onChange={(e) => setGuests(e.target.value)}
                   className="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -353,8 +353,8 @@ export function LandingPage() {
             {hotels.map((hotel) => (
               <Card key={hotel.id} className="border-none shadow-lg shadow-primary/5 overflow-hidden group cursor-pointer" onClick={() => navigate(`/hotel/${hotel.id}`)}>
                 <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={hotel.image} 
+                  <img
+                    src={hotel.image}
                     alt={hotel.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
@@ -411,7 +411,7 @@ export function LandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {amenities.map((amenity, index) => (
-              <div 
+              <div
                 key={index}
                 className="flex items-center gap-3 p-4 rounded-xl bg-background border border-border hover:border-primary/30 hover:bg-primary/5 transition-all duration-300"
               >

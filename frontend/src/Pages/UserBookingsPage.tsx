@@ -39,6 +39,7 @@ import {
     Loader2,
 } from "lucide-react"
 import { bookingApi, reviewApi } from "@/lib/api"
+import { clearAllAuthState } from "@/lib/authAtoms"
 import { toast } from "sonner"
 
 interface Booking {
@@ -407,8 +408,8 @@ export function UserBookingsPage() {
     }
 
     const handleLogout = () => {
-        localStorage.removeItem("token")
-        localStorage.removeItem("user")
+        // Clear all auth state from atoms and localStorage
+        clearAllAuthState(() => {})
         navigate("/login")
     }
 

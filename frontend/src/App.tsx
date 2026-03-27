@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom"
+import { useEffect } from "react"
 import { LandingPage } from "@/Pages/LandingPage"
 import { LoginPage } from "@/Pages/LoginPage"
 import { RegisterPage } from "@/Pages/RegisterPage"
@@ -15,6 +16,36 @@ import { AdminLoginPage } from "@/Pages/AdminLoginPage"
 import { AdminDashboard } from "@/Pages/AdminDashboard"
 import { useAdminAuth } from "@/context/AdminAuthProvider"
 import { useAuth } from "@/context/AuthProvider"
+import { clearAllAuthState } from "@/lib/authAtoms"
+
+// Storage event listener component to sync logout across tabs
+function StorageEventListener() {
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Listen for auth-related storage changes from other tabs
+      if (['token', 'user', 'hotelOwnerToken', 'hotelOwner', 'adminToken', 'admin'].includes(e.key || '')) {
+        // If storage was cleared in another tab, clear in this tab too
+        if (!e.newValue) {
+          clearAllAuthState(() => {})
+        }
+      }
+    }
+
+    const handleCustomLogout = () => {
+      // Listen for custom logout events from same tab
+      clearAllAuthState(() => {})
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('auth-logout', handleCustomLogout)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('auth-logout', handleCustomLogout)
+    }
+  }, [])
+
+  return null
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -60,7 +91,9 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <Routes>
+    <>
+      <StorageEventListener />
+      <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -129,6 +162,7 @@ export function App() {
         }
       />
     </Routes>
+    </>
   )
 }
 

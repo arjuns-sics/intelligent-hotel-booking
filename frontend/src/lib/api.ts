@@ -45,8 +45,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear all auth state on 401 unauthorized errors
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
       localStorage.removeItem("hotelOwnerToken")
       localStorage.removeItem("hotelOwner")
+      localStorage.removeItem("adminToken")
+      localStorage.removeItem("admin")
+      localStorage.removeItem("onboardingComplete")
+      
+      // Dispatch custom event to notify all components
+      window.dispatchEvent(new CustomEvent('auth-logout'))
     }
     return Promise.reject(error)
   }

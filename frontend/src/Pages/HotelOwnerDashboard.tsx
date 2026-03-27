@@ -31,6 +31,7 @@ import {
     Loader2,
 } from "lucide-react"
 import { type Room, bookingApi, reviewApi, activityApi, exportApi } from "@/lib/api"
+import { clearAllAuthState } from "@/lib/authAtoms"
 import { useRooms } from "@/hooks/useRooms"
 import { AddRoomDialog } from "@/components/AddRoomDialog"
 import { EditRoomDialog } from "@/components/EditRoomDialog"
@@ -306,8 +307,8 @@ export function HotelOwnerDashboard() {
     }
 
     const handleLogout = () => {
-        localStorage.removeItem("hotelOwner")
-        localStorage.removeItem("hotelOwnerToken")
+        // Clear all auth state from atoms and localStorage
+        clearAllAuthState(() => {})
         navigate("/owner/login")
     }
 

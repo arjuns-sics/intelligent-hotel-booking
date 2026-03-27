@@ -81,4 +81,7 @@ export const clearAllAuthState = (set: any) => {
   localStorage.removeItem('onboardingComplete');
   localStorage.removeItem('adminToken');
   localStorage.removeItem('admin');
+  
+  // Dispatch custom event to sync logout across components
+  window.dispatchEvent(new CustomEvent('auth-logout'));
 };

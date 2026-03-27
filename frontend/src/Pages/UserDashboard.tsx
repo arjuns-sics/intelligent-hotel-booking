@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, MapPin, Star, Building2, Users } from "lucide-react"
 import { api } from "@/lib/api"
+import { clearAllAuthState } from "@/lib/authAtoms"
 import { FilterSidebar } from "@/components/FilterSidebar"
 import { Input } from "@/components/ui/input"
 
@@ -148,8 +149,7 @@ export function UserDashboard() {
                 My Bookings
               </Button>
               <Button onClick={() => {
-                localStorage.removeItem('token')
-                localStorage.removeItem('user')
+                clearAllAuthState(() => {})
                 navigate('/login')
               }}>
                 Sign Out

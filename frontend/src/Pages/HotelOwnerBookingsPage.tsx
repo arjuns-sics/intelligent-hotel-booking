@@ -21,6 +21,7 @@ import {
     TrendingUp,
 } from "lucide-react"
 import { bookingApi } from "@/lib/api"
+import { clearAllAuthState } from "@/lib/authAtoms"
 import { toast } from "sonner"
 import {
     Select,
@@ -250,8 +251,7 @@ export function HotelOwnerBookingsPage() {
                             </Button>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => {
-                            localStorage.removeItem("hotelOwnerToken")
-                            localStorage.removeItem("hotelOwner")
+                            clearAllAuthState(() => {})
                             navigate("/owner/login")
                         }}>
                             Sign Out
