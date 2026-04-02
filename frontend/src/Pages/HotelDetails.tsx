@@ -7,7 +7,6 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   MapPin,
@@ -20,8 +19,6 @@ import {
   ArrowLeft,
   Users,
   Clock,
-  Phone,
-  Mail,
   CheckCircle,
   Heart,
   Share2,
@@ -261,22 +258,33 @@ export function HotelDetails() {
   const confirmBooking = () => {
     if (!selectedRoomDetails || !hotel) return
 
-    createBookingMutation.mutate({
-      hotelId: hotel.id,
-      roomId: selectedRoom,
-      roomType: selectedRoomDetails.name,
-      roomDetails: {
-        price: selectedRoomDetails.price,
-        maxGuests: selectedRoomDetails.maxGuests,
-        beds: selectedRoomDetails.beds,
-        size: selectedRoomDetails.size,
-        amenities: selectedRoomDetails.amenities,
+    // Navigate to payment page with booking details
+    navigate('/payment', {
+      state: {
+        hotel: {
+          id: hotel.id,
+          name: hotel.name,
+          image: hotel.image,
+          location: hotel.location,
+        },
+        selectedRoom: {
+          id: selectedRoom,
+          name: selectedRoomDetails.name,
+          price: selectedRoomDetails.price,
+          maxGuests: selectedRoomDetails.maxGuests,
+          beds: selectedRoomDetails.beds,
+          size: selectedRoomDetails.size,
+          amenities: selectedRoomDetails.amenities,
+        },
+        bookingData: {
+          checkIn: bookingData.checkIn,
+          checkOut: bookingData.checkOut,
+          guests: bookingData.guests,
+          specialRequests,
+        },
+        totalPrice: totalPrice,
+        numberOfNights: numberOfNights,
       },
-      checkIn: bookingData.checkIn,
-      checkOut: bookingData.checkOut,
-      guests: bookingData.guests,
-      pricePerNight: selectedRoomDetails.price,
-      specialRequests,
     })
   }
 

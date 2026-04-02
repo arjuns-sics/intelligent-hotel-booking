@@ -7,6 +7,7 @@ import { ResetPasswordPage } from "@/Pages/ResetPasswordPage"
 import { UserDashboard } from "@/Pages/UserDashboard"
 import { HotelDetails } from "@/Pages/HotelDetails"
 import { UserBookingsPage } from "@/Pages/UserBookingsPage"
+import { PaymentPage } from "@/Pages/PaymentPage"
 import { HotelOwnerLoginPage } from "@/Pages/HotelOwnerLoginPage"
 import { HotelOwnerRegisterPage } from "@/Pages/HotelOwnerRegisterPage"
 import { HotelOwnerOnboarding } from "@/Pages/HotelOwnerOnboarding"
@@ -119,6 +120,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <UserBookingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment"
+        element={
+          <ProtectedRoute>
+            <PaymentPage />
           </ProtectedRoute>
         }
       />
